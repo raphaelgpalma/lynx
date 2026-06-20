@@ -97,6 +97,8 @@ purinina/
 └── docs/                  # architecture, HITL, sandbox & agent documentation
 ```
 
-## License
+## License & credits
 
-[MIT](./LICENSE). Inspired by CAI's architecture; contains no CAI source code.
+[MIT](./LICENSE). Inspired by CAI's architecture; contains **no** CAI source
+code. See [`NOTICE`](./NOTICE) and [`CREDITS.md`](./CREDITS.md) for full
+attribution (CAI, the OpenAI Agents SDK, opencode, and the bundled tools).
