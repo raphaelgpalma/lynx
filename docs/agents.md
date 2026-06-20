@@ -14,24 +14,27 @@ expressed with **per-agent permissions**.
 | **web-exploit**  | subagent | Web/API testing and authorized exploitation; builds PoCs.                                                    | full bash + edit, all HITL-gated; no DoS             |
 | **reporter**     | subagent | Turns findings into `reports/REPORT.md`.                                                                     | **no bash**; `edit` only                             |
 
-## How delegation works (Phase 1)
+## How delegation works
 
-The orchestrator is the primary agent you talk to. It uses opencode's built-in
-`task` tool to spin up specialist subagents — Purinina's idiomatic equivalent of
-CAI's `handoff` / `transfer_to_X`. A typical flow:
+The orchestrator is the primary agent you talk to. It can delegate two ways:
+
+- **Single hand-off** — opencode's built-in `task` tool (the idiomatic
+  equivalent of CAI's `handoff` / `transfer_to_X`).
+- **Structured multi-agent coordination** — the Purinina **pattern engine**
+  (Phase 2), exposed as orchestrator-only tools:
 
 ```
 operator → orchestrator
-              ├── task(recon, "enumerate 10.10.10.10")
-              ├── task(recon, "web discovery on http://10.10.10.10")   # parallel fan-out
-              ├── task(web-exploit, "test the login form for SQLi")     # after recon
-              └── task(reporter, "write the report")                    # at the end
+   ├── purinina_parallel([{recon, host A}, {recon, host B}, {recon, host C}])  # fan-out, concurrent
+   ├── purinina_pipeline(["recon","web-exploit","reporter"], input)            # assembly line
+   └── purinina_swarm(entry="recon", input="own the box")                      # peer-to-peer hand-offs
 ```
 
-This already expresses **sequential** (recon → exploit → report) and
-**parallel** (multiple recon tasks) patterns. Richer CAI patterns (swarm with
-peer-to-peer handoff, conditional routing) arrive in Phase 2 via the plugin —
-see [architecture.md](./architecture.md).
+The engine drives each agent via the opencode SDK (its own session per agent),
+still under the HITL gate, using each agent's configured model. In a swarm, an
+agent hands off by ending its reply with `HANDOFF: <agent> — <task>` (or `DONE`).
+See [architecture.md](./architecture.md) for the full design, bounds, and the
+remaining patterns on the roadmap (conditional, hierarchical, `purinina.yml`).
 
 ## Choosing a model per agent
 

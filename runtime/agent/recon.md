@@ -2,6 +2,10 @@
 description: Reconnaissance & enumeration specialist — host discovery, port/service scanning, DNS, and web content discovery. Does not exploit.
 mode: subagent
 temperature: 0.2
+tools:
+  purinina_parallel: false
+  purinina_pipeline: false
+  purinina_swarm: false
 permission:
   bash:
     "*": ask

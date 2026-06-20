@@ -4,6 +4,9 @@ mode: subagent
 temperature: 0.2
 tools:
   bash: false
+  purinina_parallel: false
+  purinina_pipeline: false
+  purinina_swarm: false
 permission:
   edit: allow
   bash: deny

@@ -77,11 +77,21 @@ intrusive action pauses for your approval.
 
 ## Project status
 
-Early development. **v1 (vertical slice)** wires the full pipeline end-to-end
-(sandbox → opencode → plugin → agents → HITL → tools) with four agents:
-`orchestrator`, `recon`, `web-exploit`, `reporter`. The remaining CAI specialist
-agents and the custom orchestration patterns are added incrementally
+Early development.
+
+- **v1 (vertical slice):** full pipeline end-to-end (sandbox → opencode → plugin
+  → agents → HITL → tools) with four agents: `orchestrator`, `recon`,
+  `web-exploit`, `reporter`, plus per-agent model selection.
+- **Phase 2 (essential patterns):** the orchestration **pattern engine** —
+  `purinina_parallel`, `purinina_pipeline`, `purinina_swarm` — driving agents via
+  the opencode SDK (orchestrator-only; HITL still applies).
+
+Remaining CAI specialist agents, the `conditional`/`hierarchical` patterns and a
+declarative `purinina.yml` are added incrementally
 (see [`docs/architecture.md`](./docs/architecture.md) → _Roadmap_).
+
+> After changing the plugin or agents, rebuild the sandbox image so the baked
+> config updates: `purinina build`.
 
 ## Repository layout
 
