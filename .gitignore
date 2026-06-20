@@ -21,8 +21,9 @@ opencode.db*
 # Logs & runtime artifacts
 logs/
 *.log
-runtime/workspace-skeleton/loot/
-runtime/workspace-skeleton/evidence/
+
+# A real engagement workspace created next to the launcher (never commit loot)
+/engagement/
 
 # OS / editor
 .DS_Store
