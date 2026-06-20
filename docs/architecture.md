@@ -1,0 +1,93 @@
+# Architecture
+
+Purinina re-implements the **multi-agent architecture of CAI** on top of
+[opencode](https://opencode.ai), in TypeScript. It contains no CAI source code —
+only the architectural ideas, expressed idiomatically for opencode.
+
+## Design principle: opencode is the runtime, Purinina is the architecture
+
+opencode already solves the hard, easy-to-get-wrong problems: a great terminal
+UI, provider/model management, the agent execution loop, tool calling, bash
+integration, and a permission system. Re-building those would be wasted effort
+and a source of bugs. So Purinina treats opencode as the **runtime + interface**
+and layers the CAI-style architecture on top via three seams opencode exposes:
+
+1. **Agents** (`runtime/agent/*.md`) — the specialist personas.
+2. **A plugin** (`runtime/plugin/purinina.ts`) — cross-cutting logic: the HITL
+   policy, the safety floor, and engagement tools.
+3. **Config** (`runtime/opencode.json`) — permissions that route intrusive
+   actions through the HITL policy and protect the host.
+
+All of this is baked into a Docker sandbox as opencode's **global config**, so
+the entire architecture is present the moment opencode starts inside the box.
+
+## CAI → Purinina mapping
+
+| CAI concept (Python) | Purinina realization | Where |
+| --- | --- | --- |
+| `Agent` dataclass (name, instructions, tools, model…) | opencode agent (markdown + frontmatter) | `runtime/agent/*.md` |
+| Agent `instructions` / system prompt | agent markdown body + global `AGENTS.md` | `runtime/agent/*`, workspace `AGENTS.md` |
+| `handoff` → `transfer_to_X` tool | opencode built-in **`task`** tool (orchestrator → subagent) | `orchestrator.md` |
+| Orchestration **patterns** (swarm / parallel / sequential / hierarchical / conditional) | Phase 1: orchestrator + `task`. Phase 2: explicit pattern engine in the plugin | `orchestrator.md`, plugin (roadmap) |
+| Per-category **tools** (recon, exploitation, web…) | opencode `bash` + per-agent permission categories + risk classifier | `runtime/agent/*`, plugin |
+| Tool execution (`generic_linux_command`) | opencode `bash` tool | built-in |
+| Agent **factory / registry** + `agents.yml` | opencode agent auto-discovery from `agent/` | built-in |
+| **Human-In-The-Loop** | central policy in the plugin (`permission.ask` + `tool.execute.before`) | `runtime/plugin/purinina.ts`, see [hitl.md](./hitl.md) |
+| **Virtualization** (`--network host`, `NET_RAW`, seccomp unconfined) | the Docker sandbox | `docker/`, see [sandbox.md](./sandbox.md) |
+| `cai` CLI entry point | the `purinina` host launcher | `src/launcher/` |
+
+## Runtime topology
+
+```
+host: `purinina` launcher (src/launcher)
+   │  docker run --network host --cap-add NET_ADMIN,NET_RAW  (see sandbox.md)
+   ▼
+sandbox container
+   ├── opencode  (pinned, baked in)
+   └── ~/.config/opencode/         ← Purinina global config (baked)
+        ├── opencode.json          ← permissions route intrusive tools to HITL
+        ├── plugin/purinina.ts     ← HITL policy + safety floor + tools
+        └── agent/                 ← orchestrator + recon + web-exploit + reporter
+   working dir: /root/engagement   ← mounted from host; seeded from skeleton
+
+flow:  operator ⇄ orchestrator ──task──▶ recon / web-exploit / reporter
+                                  every intrusive step ⟶ HITL gate
+```
+
+## Why "agents + plugin", not "a plugin OR an agent"
+
+A common question is whether Purinina should be *an opencode plugin* or *a
+separate agent*. The answer is **both**, and that mirrors CAI: CAI has both agent
+definitions *and* an SDK/runtime with tools and policy. In Purinina:
+
+- The **personas** are naturally opencode agents (prompt + tool scope + model).
+- The **cross-cutting behavior** (HITL, safety floor, engagement tools, and —
+  later — the pattern engine) needs the plugin, because the plugin is the only
+  place with access to opencode's hooks and SDK client at runtime.
+
+## Orchestration: phased approach
+
+Purinina's pattern support is delivered in phases (a deliberate decision to ship
+a correct vertical slice first):
+
+- **Phase 1 (current):** idiomatic opencode. The `orchestrator` primary agent
+  decomposes the engagement and delegates to specialists with the built-in
+  `task` tool. This already expresses *sequential* (recon → exploit → report)
+  and *parallel* (fan-out several recon tasks) topologies, riding opencode's
+  tested delegation machinery.
+- **Phase 2 (roadmap):** an explicit **pattern engine** in the plugin that
+  models CAI's pattern types as first-class constructs (swarm with peer-to-peer
+  handoff, parallel with unified/split context, conditional routing), driving
+  subagents via the opencode SDK client.
+
+## Roadmap
+
+1. **More specialist agents** toward CAI parity: `blue-team`, `bug-bounty`,
+   `dfir`, `reverse-engineering`, `network`, `wifi`, `memory`, `compliance`, etc.
+2. **Pattern engine** (Phase 2 above) + a `purinina.yml` for declarative
+   multi-agent line-ups (the analogue of CAI's `agents.yml`).
+3. **Tooling depth:** richer per-category tools and result parsers.
+4. **Policy as an extracted, unit-tested module** (currently the risk classifier
+   lives inline in the single-file plugin; extraction + a bundled build will let
+   us ship a proper test suite).
+5. **Tracing & cost controls** mirroring CAI's price/turn limits.
