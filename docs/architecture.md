@@ -88,6 +88,9 @@ a correct vertical slice first):
   - **HITL still applies:** spawned agents run in child sessions that pass
     through the same `permission.ask` gate.
   - **Per-agent models apply:** spawned agents use their configured model.
+  - **Cancellable:** interrupting the orchestrator propagates through the tool's
+    abort signal — the engine aborts every child session it spawned, so no
+    recon/exploit work keeps running in the background.
   - **Bounds:** parallel ≤ 8 tasks, swarm ≤ 6 hops.
 
   > The engine compiles and loads cleanly; its live behavior (nested

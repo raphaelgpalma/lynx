@@ -330,6 +330,7 @@ interface EngineClient {
       body: { agent?: string; parts: Array<{ type: "text"; text: string }> }
       query?: { directory?: string }
     }): Promise<{ data?: { parts?: Array<{ type: string; text?: string }> }; error?: unknown }>
+    abort(opts: { path: { id: string } }): Promise<{ error?: unknown }>
   }
 }
 
@@ -339,6 +340,19 @@ interface AgentResult {
   error?: string
 }
 
+/**
+ * Per-invocation run context. Tracks every child session the engine spawns so
+ * that, on cancellation (`signal`), we can abort them all — otherwise spawned
+ * agents would keep running on the server after the operator interrupts.
+ */
+interface RunCtx {
+  client: EngineClient
+  directory: string
+  parentID?: string
+  signal?: AbortSignal
+  created: string[]
+}
+
 const MAX_PARALLEL_TASKS = 8
 const MAX_SWARM_HOPS = 6
 
@@ -346,57 +360,53 @@ const HANDOFF_RE = /HANDOFF:\s*([A-Za-z0-9_-]+)\s*(?:[—:-]\s*(.*))?$/m
 const DONE_RE = /\bDONE\b\s*$/m
 
 /** Run one agent to completion in its own (child) session; return its final text. */
-async function runAgent(
-  client: EngineClient,
-  opts: { agent: string; input: string; directory: string; parentID?: string },
-): Promise<AgentResult> {
+async function runAgent(ctx: RunCtx, agent: string, input: string): Promise<AgentResult> {
+  if (ctx.signal?.aborted) return { agent, output: "", error: "aborted" }
   try {
-    const created = await client.session.create({
-      body: { parentID: opts.parentID, title: `purinina:${opts.agent}` },
-      query: { directory: opts.directory },
+    const created = await ctx.client.session.create({
+      body: { parentID: ctx.parentID, title: `purinina:${agent}` },
+      query: { directory: ctx.directory },
     })
     const id = created.data?.id
-    if (!id) return { agent: opts.agent, output: "", error: "could not create session" }
-    const res = await client.session.prompt({
+    if (!id) return { agent, output: "", error: "could not create session" }
+    ctx.created.push(id) // track so we can abort it on cancel
+    if (ctx.signal?.aborted) {
+      await ctx.client.session.abort({ path: { id } }).catch(() => {})
+      return { agent, output: "", error: "aborted" }
+    }
+    const res = await ctx.client.session.prompt({
       path: { id },
-      body: { agent: opts.agent, parts: [{ type: "text", text: opts.input }] },
-      query: { directory: opts.directory },
+      body: { agent, parts: [{ type: "text", text: input }] },
+      query: { directory: ctx.directory },
     })
-    if (res.error || !res.data) return { agent: opts.agent, output: "", error: "prompt failed" }
+    if (res.error || !res.data) return { agent, output: "", error: "prompt failed" }
     const text = (res.data.parts ?? [])
       .filter((p) => p.type === "text" && typeof p.text === "string")
       .map((p) => p.text as string)
       .join("\n")
       .trim()
-    return { agent: opts.agent, output: text }
+    return { agent, output: text }
   } catch (e) {
-    return { agent: opts.agent, output: "", error: e instanceof Error ? e.message : String(e) }
+    return { agent, output: "", error: e instanceof Error ? e.message : String(e) }
   }
 }
 
 /** PARALLEL: independent tasks run concurrently, each in its own context. */
 async function runParallel(
-  client: EngineClient,
+  ctx: RunCtx,
   tasks: Array<{ agent: string; input: string }>,
-  directory: string,
-  parentID?: string,
 ): Promise<AgentResult[]> {
   const limited = tasks.slice(0, MAX_PARALLEL_TASKS)
-  return Promise.all(limited.map((t) => runAgent(client, { ...t, directory, parentID })))
+  return Promise.all(limited.map((t) => runAgent(ctx, t.agent, t.input)))
 }
 
 /** SEQUENTIAL: each agent receives the previous agent's output (assembly line). */
-async function runPipeline(
-  client: EngineClient,
-  agents: string[],
-  input: string,
-  directory: string,
-  parentID?: string,
-): Promise<AgentResult[]> {
+async function runPipeline(ctx: RunCtx, agents: string[], input: string): Promise<AgentResult[]> {
   const results: AgentResult[] = []
   let carry = input
   for (const agent of agents) {
-    const r = await runAgent(client, { agent, input: carry, directory, parentID })
+    if (ctx.signal?.aborted) break
+    const r = await runAgent(ctx, agent, carry)
     results.push(r)
     if (r.error) break
     carry = `Previous step (${agent}) produced:\n\n${r.output}\n\nContinue based on this.`
@@ -417,23 +427,17 @@ function swarmPreamble(allowed: string[]): string {
 
 /** SWARM: peer-to-peer hand-offs; the engine routes by parsing the directive. */
 async function runSwarm(
-  client: EngineClient,
+  ctx: RunCtx,
   entry: string,
   input: string,
   allowed: string[],
-  directory: string,
-  parentID?: string,
 ): Promise<AgentResult[]> {
   const results: AgentResult[] = []
   let current = entry
   let task = input
   for (let hop = 0; hop < MAX_SWARM_HOPS; hop++) {
-    const r = await runAgent(client, {
-      agent: current,
-      input: `${swarmPreamble(allowed)}\n\n${task}`,
-      directory,
-      parentID,
-    })
+    if (ctx.signal?.aborted) break
+    const r = await runAgent(ctx, current, `${swarmPreamble(allowed)}\n\n${task}`)
     results.push(r)
     if (r.error || DONE_RE.test(r.output)) break
     const m = HANDOFF_RE.exec(r.output)
@@ -444,6 +448,38 @@ async function runSwarm(
     task = m[2]?.trim() || r.output
   }
   return results
+}
+
+/**
+ * Run a pattern with cancellation propagation. When the operator interrupts the
+ * orchestrator, `signal` fires and we abort every child session the engine
+ * spawned, so no recon/exploit work keeps running in the background.
+ */
+async function runPattern(
+  client: EngineClient,
+  opts: { directory: string; parentID?: string; signal?: AbortSignal },
+  fn: (ctx: RunCtx) => Promise<AgentResult[]>,
+): Promise<AgentResult[]> {
+  const ctx: RunCtx = {
+    client,
+    directory: opts.directory,
+    parentID: opts.parentID,
+    signal: opts.signal,
+    created: [],
+  }
+  const abortAll = () => {
+    log(`cancel -> aborting ${ctx.created.length} spawned session(s)`)
+    for (const id of ctx.created) void client.session.abort({ path: { id } }).catch(() => {})
+  }
+  if (opts.signal) {
+    if (opts.signal.aborted) abortAll()
+    else opts.signal.addEventListener("abort", abortAll, { once: true })
+  }
+  try {
+    return await fn(ctx)
+  } finally {
+    opts.signal?.removeEventListener("abort", abortAll)
+  }
 }
 
 /** Render engine results into a readable block for the orchestrator. */
@@ -588,7 +624,11 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
         },
         async execute(args, ctx) {
           log(`pattern parallel x${args.tasks.length}`)
-          const results = await runParallel(engineClient, args.tasks, ctx.directory, ctx.sessionID)
+          const results = await runPattern(
+            engineClient,
+            { directory: ctx.directory, parentID: ctx.sessionID, signal: ctx.abort },
+            (rc) => runParallel(rc, args.tasks),
+          )
           return formatResults(results)
         },
       }),
@@ -604,12 +644,10 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
         },
         async execute(args, ctx) {
           log(`pattern pipeline [${args.agents.join(" -> ")}]`)
-          const results = await runPipeline(
+          const results = await runPattern(
             engineClient,
-            args.agents,
-            args.input,
-            ctx.directory,
-            ctx.sessionID,
+            { directory: ctx.directory, parentID: ctx.sessionID, signal: ctx.abort },
+            (rc) => runPipeline(rc, args.agents, args.input),
           )
           return formatResults(results)
         },
@@ -628,13 +666,10 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
         },
         async execute(args, ctx) {
           log(`pattern swarm entry=${args.entry}`)
-          const results = await runSwarm(
+          const results = await runPattern(
             engineClient,
-            args.entry,
-            args.input,
-            args.agents,
-            ctx.directory,
-            ctx.sessionID,
+            { directory: ctx.directory, parentID: ctx.sessionID, signal: ctx.abort },
+            (rc) => runSwarm(rc, args.entry, args.input, args.agents),
           )
           return formatResults(results)
         },
