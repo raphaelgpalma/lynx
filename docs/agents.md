@@ -33,6 +33,39 @@ This already expresses **sequential** (recon → exploit → report) and
 peer-to-peer handoff, conditional routing) arrive in Phase 2 via the plugin —
 see [architecture.md](./architecture.md).
 
+## Choosing a model per agent
+
+You can assign any model accessible through opencode to each agent individually
+(the analogue of CAI's `CAI_<AGENT>_MODEL`). For example: a big model for
+`web-exploit`, a fast/cheap one for `recon`, a writing-focused one for
+`reporter`.
+
+```bash
+purinina models          # interactive: pick a model for the default + each agent
+purinina models list     # print every model accessible through opencode
+purinina status          # show the current per-agent assignment
+```
+
+How it works (no image rebuild needed):
+
+- Choices are saved to `purinina.models.json` next to where you run the launcher:
+  ```json
+  {
+    "default": "ollama-cloud/qwen3-coder:480b",
+    "agents": {
+      "recon": "ollama-cloud/gpt-oss:20b",
+      "web-exploit": "ollama-cloud/deepseek-v3.1:671b",
+      "reporter": "ollama-cloud/gpt-oss:120b"
+    }
+  }
+  ```
+- On launch, the launcher merges these into `<workspace>/opencode.json` as the
+  top-level `model` (default + fallback) and `agent.<name>.model` per agent.
+  opencode deep-merges this project config over the global one, so the per-agent
+  models apply while the Purinina plugin, permissions and agents keep working.
+- An agent without an explicit choice uses the default. You can also hand-edit
+  `purinina.models.json` (or the workspace `opencode.json`) directly.
+
 ## Per-agent tool categories (example)
 
 `recon` is restricted from exploitation by denying those binaries in its

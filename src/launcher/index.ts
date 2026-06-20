@@ -18,6 +18,18 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { loadConfig, type PurininaConfig } from "./config.js"
 import * as docker from "./docker.js"
+import {
+  discoverAgentNames,
+  listAccessibleModels,
+  loadSelection,
+  resolveModels,
+  runInteractiveSelector,
+  selectionPath,
+  writeWorkspaceModelConfig,
+} from "./models.js"
+
+/** Last-resort default model if none is configured (user runs Ollama Cloud). */
+const FALLBACK_MODEL = "ollama-cloud/qwen3-coder:480b"
 
 const RESET = "\x1b[0m"
 const BOLD = "\x1b[1m"
@@ -51,6 +63,7 @@ ${BOLD}Usage${RESET}
 ${BOLD}Commands${RESET}
   ${CYAN}(default)${RESET}   build if needed, start the sandbox, open opencode (orchestrator)
   ${CYAN}build${RESET}       (re)build the sandbox image
+  ${CYAN}models${RESET}      assign a model to each agent (interactive); 'models list' prints all
   ${CYAN}shell${RESET}       open a bash shell inside the running sandbox
   ${CYAN}status${RESET}      show docker / image / container state
   ${CYAN}stop${RESET}        stop the sandbox container
@@ -60,7 +73,8 @@ ${BOLD}Commands${RESET}
 ${BOLD}Key settings${RESET} ${DIM}(env or .env)${RESET}
   PURININA_WORKSPACE  host dir mounted as the engagement workspace (default ./engagement)
   PURININA_HITL       strict | guided | auto   (default strict)
-  PURININA_MODEL      default model, e.g. anthropic/claude-opus-4-8
+  PURININA_MODEL      default model, e.g. ollama-cloud/qwen3-coder:480b
+                      ${DIM}(per-agent models: 'purinina models')${RESET}
   PURININA_IMAGE      image tag   (default purinina:latest)
   PURININA_CONTAINER  container name (default purinina-sandbox)
 
@@ -172,15 +186,37 @@ function ensureContainer(cfg: PurininaConfig): void {
   ok(`Sandbox up. Workspace: ${cfg.workspace} -> /root/engagement`)
 }
 
-function openOpencode(cfg: PurininaConfig): never {
-  const command = ["opencode", "--agent", "orchestrator"]
-  if (cfg.model) command.push("--model", cfg.model)
-  info(`Opening opencode (HITL=${cfg.hitl}${cfg.model ? `, model=${cfg.model}` : ""})…`)
+/**
+ * Resolve per-agent models and write them into the workspace opencode.json.
+ * We do NOT pass `--model` to opencode (it would override every agent); the
+ * merged workspace config drives both the default and per-agent models.
+ */
+function applyModels(cfg: PurininaConfig): { default: string; agents: Record<string, string> } {
+  mkdirSync(cfg.workspace, { recursive: true })
+  const agents = discoverAgentNames(cfg.repoRoot)
+  const sel = loadSelection(process.cwd(), cfg.model ?? FALLBACK_MODEL)
+  const agentModels = resolveModels(agents, sel)
+  writeWorkspaceModelConfig(cfg.workspace, sel.default, agentModels)
+  return { default: sel.default, agents: agentModels }
+}
+
+function openOpencode(
+  cfg: PurininaConfig,
+  models: { default: string; agents: Record<string, string> },
+): never {
+  const orchestrator = models.agents["orchestrator"] ?? models.default
+  info(`Opening opencode (HITL=${cfg.hitl}, orchestrator=${orchestrator})…`)
+  log(
+    DIM +
+      "models per agent are set in <workspace>/opencode.json — edit with 'purinina models'" +
+      RESET,
+  )
   log(DIM + "─".repeat(60) + RESET)
+  // Start on the orchestrator. No --model: per-agent models come from config.
   const code = docker.execInteractive({
     container: cfg.container,
     env: { PURININA_HITL: cfg.hitl },
-    command,
+    command: ["opencode", "--agent", "orchestrator"],
   })
   process.exit(code)
 }
@@ -188,8 +224,9 @@ function openOpencode(cfg: PurininaConfig): never {
 function cmdLaunch(cfg: PurininaConfig): void {
   requireDocker()
   ensureImage(cfg)
+  const models = applyModels(cfg)
   ensureContainer(cfg)
-  openOpencode(cfg)
+  openOpencode(cfg, models)
 }
 
 function cmdBuild(cfg: PurininaConfig): void {
@@ -200,6 +237,7 @@ function cmdBuild(cfg: PurininaConfig): void {
 function cmdShell(cfg: PurininaConfig): void {
   requireDocker()
   ensureImage(cfg)
+  applyModels(cfg)
   ensureContainer(cfg)
   info("Opening a shell inside the sandbox…")
   const code = docker.execInteractive({
@@ -221,6 +259,39 @@ function cmdStatus(cfg: PurininaConfig): void {
   log(`  workspace        : ${cfg.workspace}`)
   log(`  HITL mode        : ${cfg.hitl}`)
   log(`  auth mode        : ${cfg.authMode}`)
+
+  const agents = discoverAgentNames(cfg.repoRoot)
+  const sel = loadSelection(process.cwd(), cfg.model ?? FALLBACK_MODEL)
+  const models = resolveModels(agents, sel)
+  log(`  models           : ${DIM}(default ${sel.default}; edit with 'purinina models')${RESET}`)
+  for (const a of agents) {
+    const overridden = sel.agents[a] ? "" : `${DIM} (default)${RESET}`
+    log(`    ${a.padEnd(14)} ${models[a]}${overridden}`)
+  }
+}
+
+function cmdModels(cfg: PurininaConfig): void {
+  const agents = discoverAgentNames(cfg.repoRoot)
+  if (agents.length === 0) {
+    fail("No agents found under runtime/agent/. Run from the purinina repo.")
+    process.exit(1)
+  }
+  // `purinina models list` -> just print accessible model ids.
+  if ((process.argv[3] ?? "").toLowerCase() === "list") {
+    const models = listAccessibleModels()
+    if (models.length === 0) {
+      warn("Could not list models. Is opencode installed and authenticated on the host?")
+      return
+    }
+    for (const m of models) log(m)
+    return
+  }
+  void runInteractiveSelector(process.cwd(), agents, cfg.model ?? FALLBACK_MODEL).then((sel) => {
+    ok(`Saved model selection to ${selectionPath(process.cwd())}`)
+    log(`${DIM}Applied on next launch (written into <workspace>/opencode.json).${RESET}`)
+    const resolved = resolveModels(agents, sel)
+    for (const a of agents) log(`  ${a.padEnd(14)} ${resolved[a]}`)
+  })
 }
 
 function cmdStop(cfg: PurininaConfig): void {
@@ -264,6 +335,10 @@ function main(): void {
     case "status":
     case "ps":
       cmdStatus(cfg)
+      break
+    case "models":
+    case "model":
+      cmdModels(cfg)
       break
     case "stop":
       cmdStop(cfg)
