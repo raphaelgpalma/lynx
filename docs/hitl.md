@@ -42,15 +42,15 @@ Two hooks implement the policy:
 Every bash command is classified (this is Purinina's idiomatic analogue of CAI's
 per-category tools):
 
-| Tier | Meaning | Examples |
-| --- | --- | --- |
-| `destructive` | irreversible damage | `rm -rf /`, `mkfs`, `dd of=/dev/sda`, fork bomb, `shutdown` |
-| `escape` | break out of sandbox / reach host | `nsenter`, `docker run`, `/proc/1/root`, docker.sock |
-| `exploit` | active exploitation / cred attacks / shells | `sqlmap --dump`, `hydra`, `nc -e`, `/dev/tcp/…` reverse shell |
-| `recon` | active scanning / enumeration | `nmap`, `gobuster`, `ffuf`, `nikto`, `whatweb` |
-| `script` | arbitrary interpreter, intent unknown | `python3 -c …`, `bash -c …` |
-| `readonly` | local non-intrusive inspection | `ls`, `cat`, `dig`, `grep`, `whoami` |
-| `unknown` | unrecognized command | anything else |
+| Tier          | Meaning                                     | Examples                                                      |
+| ------------- | ------------------------------------------- | ------------------------------------------------------------- |
+| `destructive` | irreversible damage                         | `rm -rf /`, `mkfs`, `dd of=/dev/sda`, fork bomb, `shutdown`   |
+| `escape`      | break out of sandbox / reach host           | `nsenter`, `docker run`, `/proc/1/root`, docker.sock          |
+| `exploit`     | active exploitation / cred attacks / shells | `sqlmap --dump`, `hydra`, `nc -e`, `/dev/tcp/…` reverse shell |
+| `recon`       | active scanning / enumeration               | `nmap`, `gobuster`, `ffuf`, `nikto`, `whatweb`                |
+| `script`      | arbitrary interpreter, intent unknown       | `python3 -c …`, `bash -c …`                                   |
+| `readonly`    | local non-intrusive inspection              | `ls`, `cat`, `dig`, `grep`, `whoami`                          |
+| `unknown`     | unrecognized command                        | anything else                                                 |
 
 The classifier splits pipelines on shell operators and inspects the leading
 binary of each segment, so `nmap … | grep open` is still `recon` and
@@ -58,14 +58,14 @@ binary of each segment, so `nmap … | grep open` is still `recon` and
 
 ## Modes (`PURININA_HITL`)
 
-| Action tier | `strict` (default) | `guided` | `auto` (labs only) |
-| --- | --- | --- | --- |
-| destructive / escape | **deny** | **deny** | **deny** |
-| exploit | ask | ask | allow |
-| recon | ask | allow | allow |
-| script / unknown | ask | ask | allow |
-| readonly | allow | allow | allow |
-| edit (in workspace) | ask | allow | allow |
+| Action tier          | `strict` (default) | `guided` | `auto` (labs only) |
+| -------------------- | ------------------ | -------- | ------------------ |
+| destructive / escape | **deny**           | **deny** | **deny**           |
+| exploit              | ask                | ask      | allow              |
+| recon                | ask                | allow    | allow              |
+| script / unknown     | ask                | ask      | allow              |
+| readonly             | allow              | allow    | allow              |
+| edit (in workspace)  | ask                | allow    | allow              |
 
 - **strict** — pauses before anything intrusive. Safest; the default.
 - **guided** — lets routine recon flow, pauses for high-impact actions.
@@ -78,7 +78,7 @@ Set it per launch: `PURININA_HITL=guided purinina`, or in `.env`.
 
 When an action is gated, opencode shows its standard approval prompt with
 **approve once / approve always (this session) / reject**. Purinina's policy only
-decides *whether* to prompt and what is hard-denied; the interaction itself is
+decides _whether_ to prompt and what is hard-denied; the interaction itself is
 opencode's well-tested UI. You can also interrupt a running agent at any time
 (opencode's built-in interrupt) to take over — the CAI-style "human can always
 step in" guarantee.

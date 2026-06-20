@@ -23,18 +23,18 @@ the entire architecture is present the moment opencode starts inside the box.
 
 ## CAI → Purinina mapping
 
-| CAI concept (Python) | Purinina realization | Where |
-| --- | --- | --- |
-| `Agent` dataclass (name, instructions, tools, model…) | opencode agent (markdown + frontmatter) | `runtime/agent/*.md` |
-| Agent `instructions` / system prompt | agent markdown body + global `AGENTS.md` | `runtime/agent/*`, workspace `AGENTS.md` |
-| `handoff` → `transfer_to_X` tool | opencode built-in **`task`** tool (orchestrator → subagent) | `orchestrator.md` |
-| Orchestration **patterns** (swarm / parallel / sequential / hierarchical / conditional) | Phase 1: orchestrator + `task`. Phase 2: explicit pattern engine in the plugin | `orchestrator.md`, plugin (roadmap) |
-| Per-category **tools** (recon, exploitation, web…) | opencode `bash` + per-agent permission categories + risk classifier | `runtime/agent/*`, plugin |
-| Tool execution (`generic_linux_command`) | opencode `bash` tool | built-in |
-| Agent **factory / registry** + `agents.yml` | opencode agent auto-discovery from `agent/` | built-in |
-| **Human-In-The-Loop** | central policy in the plugin (`permission.ask` + `tool.execute.before`) | `runtime/plugin/purinina.ts`, see [hitl.md](./hitl.md) |
-| **Virtualization** (`--network host`, `NET_RAW`, seccomp unconfined) | the Docker sandbox | `docker/`, see [sandbox.md](./sandbox.md) |
-| `cai` CLI entry point | the `purinina` host launcher | `src/launcher/` |
+| CAI concept (Python)                                                                    | Purinina realization                                                           | Where                                                  |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `Agent` dataclass (name, instructions, tools, model…)                                   | opencode agent (markdown + frontmatter)                                        | `runtime/agent/*.md`                                   |
+| Agent `instructions` / system prompt                                                    | agent markdown body + global `AGENTS.md`                                       | `runtime/agent/*`, workspace `AGENTS.md`               |
+| `handoff` → `transfer_to_X` tool                                                        | opencode built-in **`task`** tool (orchestrator → subagent)                    | `orchestrator.md`                                      |
+| Orchestration **patterns** (swarm / parallel / sequential / hierarchical / conditional) | Phase 1: orchestrator + `task`. Phase 2: explicit pattern engine in the plugin | `orchestrator.md`, plugin (roadmap)                    |
+| Per-category **tools** (recon, exploitation, web…)                                      | opencode `bash` + per-agent permission categories + risk classifier            | `runtime/agent/*`, plugin                              |
+| Tool execution (`generic_linux_command`)                                                | opencode `bash` tool                                                           | built-in                                               |
+| Agent **factory / registry** + `agents.yml`                                             | opencode agent auto-discovery from `agent/`                                    | built-in                                               |
+| **Human-In-The-Loop**                                                                   | central policy in the plugin (`permission.ask` + `tool.execute.before`)        | `runtime/plugin/purinina.ts`, see [hitl.md](./hitl.md) |
+| **Virtualization** (`--network host`, `NET_RAW`, seccomp unconfined)                    | the Docker sandbox                                                             | `docker/`, see [sandbox.md](./sandbox.md)              |
+| `cai` CLI entry point                                                                   | the `purinina` host launcher                                                   | `src/launcher/`                                        |
 
 ## Runtime topology
 
@@ -56,9 +56,9 @@ flow:  operator ⇄ orchestrator ──task──▶ recon / web-exploit / repor
 
 ## Why "agents + plugin", not "a plugin OR an agent"
 
-A common question is whether Purinina should be *an opencode plugin* or *a
-separate agent*. The answer is **both**, and that mirrors CAI: CAI has both agent
-definitions *and* an SDK/runtime with tools and policy. In Purinina:
+A common question is whether Purinina should be _an opencode plugin_ or _a
+separate agent_. The answer is **both**, and that mirrors CAI: CAI has both agent
+definitions _and_ an SDK/runtime with tools and policy. In Purinina:
 
 - The **personas** are naturally opencode agents (prompt + tool scope + model).
 - The **cross-cutting behavior** (HITL, safety floor, engagement tools, and —
@@ -72,8 +72,8 @@ a correct vertical slice first):
 
 - **Phase 1 (current):** idiomatic opencode. The `orchestrator` primary agent
   decomposes the engagement and delegates to specialists with the built-in
-  `task` tool. This already expresses *sequential* (recon → exploit → report)
-  and *parallel* (fan-out several recon tasks) topologies, riding opencode's
+  `task` tool. This already expresses _sequential_ (recon → exploit → report)
+  and _parallel_ (fan-out several recon tasks) topologies, riding opencode's
   tested delegation machinery.
 - **Phase 2 (roadmap):** an explicit **pattern engine** in the plugin that
   models CAI's pattern types as first-class constructs (swarm with peer-to-peer

@@ -62,7 +62,7 @@ Purinina makes a deliberate trade-off that is standard for pentesting tooling:
 
 Three independent mechanisms enforce this:
 
-1. The **launcher** only ever execs opencode *inside* the container.
+1. The **launcher** only ever execs opencode _inside_ the container.
 2. The image sets `PURININA_SANDBOX=1`; the **entrypoint** refuses to start if it
    is missing.
 3. The **plugin** disables `bash` (throws in `tool.execute.before`) whenever the

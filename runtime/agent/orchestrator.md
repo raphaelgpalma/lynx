@@ -22,7 +22,7 @@ all the hands-on work yourself.
    - `recon` — host/port/service/DNS/web discovery and enumeration.
    - `web-exploit` — web/API testing and (authorized) exploitation.
    - `reporter` — turn findings into a structured report.
-   You may run several recon tasks, then feed results into exploitation.
+     You may run several recon tasks, then feed results into exploitation.
 4. **Synthesize** each subagent's findings, keep the operator informed, and
    record key decisions with `purinina_note`.
 5. When the engagement is wrapping up, delegate to `reporter` to produce

@@ -19,16 +19,16 @@ opencode already provides what is genuinely hard to build well: a polished
 terminal/UI experience, model & provider management, agent/subagent execution,
 tool calling, bash integration and a permission system. Purinina does **not**
 reinvent any of that. Instead it treats opencode as the **runtime and interface**
-and layers the CAI-style multi-agent *architecture* on top:
+and layers the CAI-style multi-agent _architecture_ on top:
 
-| CAI (Python) | Purinina (TypeScript on opencode) |
-| --- | --- |
-| `Agent` personas (red team, recon, …) | opencode **agents** (`runtime/agent/*.md`) |
-| `handoff` / `transfer_to_X` | opencode **`task`** tool (orchestrator → subagent) |
-| Orchestration patterns (swarm / parallel / sequential) | **orchestrator agent** + the **purinina plugin** |
-| Per-category tools (recon, exploitation, web, …) | custom **tools** in the purinina plugin |
-| Human-In-The-Loop | central **HITL policy** in the plugin (`permission.ask` + `tool.execute.before`) |
-| Containerized virtualization (`--network host`, `NET_RAW`) | the **Docker sandbox** (`docker/`) |
+| CAI (Python)                                               | Purinina (TypeScript on opencode)                                                |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `Agent` personas (red team, recon, …)                      | opencode **agents** (`runtime/agent/*.md`)                                       |
+| `handoff` / `transfer_to_X`                                | opencode **`task`** tool (orchestrator → subagent)                               |
+| Orchestration patterns (swarm / parallel / sequential)     | **orchestrator agent** + the **purinina plugin**                                 |
+| Per-category tools (recon, exploitation, web, …)           | custom **tools** in the purinina plugin                                          |
+| Human-In-The-Loop                                          | central **HITL policy** in the plugin (`permission.ask` + `tool.execute.before`) |
+| Containerized virtualization (`--network host`, `NET_RAW`) | the **Docker sandbox** (`docker/`)                                               |
 
 See [`docs/architecture.md`](./docs/architecture.md) for the full mapping.
 
@@ -81,7 +81,7 @@ Early development. **v1 (vertical slice)** wires the full pipeline end-to-end
 (sandbox → opencode → plugin → agents → HITL → tools) with four agents:
 `orchestrator`, `recon`, `web-exploit`, `reporter`. The remaining CAI specialist
 agents and the custom orchestration patterns are added incrementally
-(see [`docs/architecture.md`](./docs/architecture.md) → *Roadmap*).
+(see [`docs/architecture.md`](./docs/architecture.md) → _Roadmap_).
 
 ## Repository layout
 

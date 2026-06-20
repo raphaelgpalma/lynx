@@ -186,14 +186,28 @@ const READONLY_BINARIES = [
 ]
 
 /** Interpreters whose intent we cannot infer from the command alone. */
-const SCRIPT_BINARIES = ["python", "python3", "perl", "ruby", "php", "node", "bash", "sh", "zsh", "lua"]
+const SCRIPT_BINARIES = [
+  "python",
+  "python3",
+  "perl",
+  "ruby",
+  "php",
+  "node",
+  "bash",
+  "sh",
+  "zsh",
+  "lua",
+]
 
 /** Split a command line into segments across shell operators, returning the leading binary of each. */
 function leadingBinaries(command: string): string[] {
   const segments = command.split(/\||;|&&|\|\||\n|`|\$\(/)
   const bins: string[] = []
   for (const seg of segments) {
-    const trimmed = seg.trim().replace(/^[({]+/, "").trim()
+    const trimmed = seg
+      .trim()
+      .replace(/^[({]+/, "")
+      .trim()
     if (!trimmed) continue
     // strip leading env assignments like FOO=bar cmd
     const withoutEnv = trimmed.replace(/^(\w+=\S+\s+)+/, "")
@@ -237,7 +251,8 @@ function classifyCommand(command: string): RiskTier {
 type Decision = "allow" | "ask" | "deny"
 
 function decideForBash(tier: RiskTier, mode: HitlMode): { decision: Decision; reason: string } {
-  if (tier === "destructive") return { decision: "deny", reason: "destructive / irreversible command" }
+  if (tier === "destructive")
+    return { decision: "deny", reason: "destructive / irreversible command" }
   if (tier === "escape") return { decision: "deny", reason: "sandbox-escape / host-access attempt" }
 
   if (mode === "auto") return { decision: "allow", reason: "auto mode (lab use)" }
@@ -267,7 +282,11 @@ function decideForEdit(mode: HitlMode): { decision: Decision; reason: string } {
 }
 
 /** Best-effort extraction of the shell command from a Permission object. */
-function commandFromPermission(p: { title?: string; pattern?: string | string[]; metadata?: Record<string, unknown> }): string {
+function commandFromPermission(p: {
+  title?: string
+  pattern?: string | string[]
+  metadata?: Record<string, unknown>
+}): string {
   const meta = p.metadata ?? {}
   const fromMeta = typeof meta["command"] === "string" ? (meta["command"] as string) : ""
   if (fromMeta) return fromMeta

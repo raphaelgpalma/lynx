@@ -71,7 +71,9 @@ ${DIM}Offensive-security tool — authorized testing only. See DISCLAIMER.${RESE
 function requireDocker(): void {
   if (!docker.isDockerInstalled()) {
     fail("Docker is required but was not found on PATH.")
-    log(`${DIM}Install Docker, then re-run. Purinina runs entirely inside a Docker sandbox.${RESET}`)
+    log(
+      `${DIM}Install Docker, then re-run. Purinina runs entirely inside a Docker sandbox.${RESET}`,
+    )
     process.exit(1)
   }
   if (!docker.isDockerRunning()) {
@@ -86,7 +88,9 @@ function ensureImage(cfg: PurininaConfig, force = false): void {
     ok(`Image ${cfg.image} present.`)
     return
   }
-  info(`Building sandbox image ${cfg.image} (opencode ${cfg.opencodeVersion}) — first build takes a few minutes…`)
+  info(
+    `Building sandbox image ${cfg.image} (opencode ${cfg.opencodeVersion}) — first build takes a few minutes…`,
+  )
   const code = docker.buildImage({
     image: cfg.image,
     context: cfg.repoRoot,
@@ -146,14 +150,16 @@ function ensureContainer(cfg: PurininaConfig): void {
   mkdirSync(cfg.workspace, { recursive: true })
   info(`Creating sandbox ${cfg.container} (host network, NET_ADMIN/NET_RAW)…`)
   const { mounts, env } = authWiring(cfg)
-  if (docker.runContainer({
-    image: cfg.image,
-    container: cfg.container,
-    workspace: cfg.workspace,
-    hitl: cfg.hitl,
-    mounts,
-    env,
-  }) !== 0) {
+  if (
+    docker.runContainer({
+      image: cfg.image,
+      container: cfg.container,
+      workspace: cfg.workspace,
+      hitl: cfg.hitl,
+      mounts,
+      env,
+    }) !== 0
+  ) {
     fail("Failed to start the sandbox container.")
     process.exit(1)
   }
@@ -202,7 +208,9 @@ function cmdStatus(cfg: PurininaConfig): void {
   log(`${BOLD}purinina status${RESET}`)
   log(`  docker installed : ${docker.isDockerInstalled() ? GREEN + "yes" : RED + "no"}${RESET}`)
   log(`  docker running   : ${docker.isDockerRunning() ? GREEN + "yes" : RED + "no"}${RESET}`)
-  log(`  image (${cfg.image}) : ${docker.imageExists(cfg.image) ? GREEN + "built" : YELLOW + "missing"}${RESET}`)
+  log(
+    `  image (${cfg.image}) : ${docker.imageExists(cfg.image) ? GREEN + "built" : YELLOW + "missing"}${RESET}`,
+  )
   log(`  container        : ${cfg.container} -> ${docker.containerState(cfg.container)}`)
   log(`  workspace        : ${cfg.workspace}`)
   log(`  HITL mode        : ${cfg.hitl}`)

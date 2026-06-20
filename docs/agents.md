@@ -7,12 +7,12 @@ expressed with **per-agent permissions**.
 
 ## The line-up
 
-| Agent | Mode | Role | Tool scope |
-| --- | --- | --- | --- |
-| **orchestrator** | primary | Plans the engagement, delegates to specialists via `task`, synthesizes results, keeps the operator informed. | `task` (delegate), light `bash`/`edit` (HITL-gated) |
-| **recon** | subagent | Host/port/service/DNS/web discovery and enumeration. Maps the attack surface; never exploits. | recon + readonly bash; **exploitation tools denied** |
-| **web-exploit** | subagent | Web/API testing and authorized exploitation; builds PoCs. | full bash + edit, all HITL-gated; no DoS |
-| **reporter** | subagent | Turns findings into `reports/REPORT.md`. | **no bash**; `edit` only |
+| Agent            | Mode     | Role                                                                                                         | Tool scope                                           |
+| ---------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| **orchestrator** | primary  | Plans the engagement, delegates to specialists via `task`, synthesizes results, keeps the operator informed. | `task` (delegate), light `bash`/`edit` (HITL-gated)  |
+| **recon**        | subagent | Host/port/service/DNS/web discovery and enumeration. Maps the attack surface; never exploits.                | recon + readonly bash; **exploitation tools denied** |
+| **web-exploit**  | subagent | Web/API testing and authorized exploitation; builds PoCs.                                                    | full bash + edit, all HITL-gated; no DoS             |
+| **reporter**     | subagent | Turns findings into `reports/REPORT.md`.                                                                     | **no bash**; `edit` only                             |
 
 ## How delegation works (Phase 1)
 
@@ -41,8 +41,8 @@ frontmatter, while leaving recon/readonly commands to the global HITL gate:
 ```yaml
 permission:
   bash:
-    "*": ask          # everything still goes through the HITL policy
-    "sqlmap*": deny    # …but exploitation tools are off-limits for recon
+    "*": ask # everything still goes through the HITL policy
+    "sqlmap*": deny # …but exploitation tools are off-limits for recon
     "hydra*": deny
     "nc*": deny
   edit: allow
