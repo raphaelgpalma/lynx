@@ -1,7 +1,7 @@
 /**
  * Per-agent model selection.
  *
- * Purinina lets you assign, to each agent, any model accessible through
+ * Lynx lets you assign, to each agent, any model accessible through
  * opencode (this is the analogue of CAI's per-agent `CAI_<AGENT>_MODEL`).
  *
  * Mechanism (validated against opencode 1.17.x):
@@ -12,7 +12,7 @@
  *   - We therefore write/merge the workspace `opencode.json` at launch and do
  *     NOT pass `--model` (which would override every agent).
  *
- * Selections are stored in `purinina.models.json` next to where you run the
+ * Selections are stored in `lynx.models.json` next to where you run the
  * launcher, so they persist and can be edited or version-controlled.
  */
 import { spawnSync } from "node:child_process"
@@ -27,7 +27,7 @@ export interface ModelSelection {
   agents: Record<string, string>
 }
 
-const SELECTION_FILE = "purinina.models.json"
+const SELECTION_FILE = "lynx.models.json"
 
 /** Discover assignable agent names from runtime/agent/*.md (future-proof). */
 export function discoverAgentNames(repoRoot: string): string[] {
@@ -111,7 +111,7 @@ export function writeWorkspaceModelConfig(
 }
 
 // ---------------------------------------------------------------------------
-// Interactive selector (`purinina models`)
+// Interactive selector (`lynx models`)
 // ---------------------------------------------------------------------------
 
 function ask(rl: ReturnType<typeof createInterface>, q: string): Promise<string> {

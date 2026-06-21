@@ -1,4 +1,4 @@
-# Purinina
+# Lynx
 
 > A multi-agent **cybersecurity / pentesting** framework that runs on top of
 > [opencode](https://opencode.ai) inside a hardened, host-networked Docker
@@ -17,16 +17,16 @@
 
 opencode already provides what is genuinely hard to build well: a polished
 terminal/UI experience, model & provider management, agent/subagent execution,
-tool calling, bash integration and a permission system. Purinina does **not**
+tool calling, bash integration and a permission system. Lynx does **not**
 reinvent any of that. Instead it treats opencode as the **runtime and interface**
 and layers the CAI-style multi-agent _architecture_ on top:
 
-| CAI (Python)                                               | Purinina (TypeScript on opencode)                                                |
+| CAI (Python)                                               | Lynx (TypeScript on opencode)                                                |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `Agent` personas (red team, recon, …)                      | opencode **agents** (`runtime/agent/*.md`)                                       |
 | `handoff` / `transfer_to_X`                                | opencode **`task`** tool (orchestrator → subagent)                               |
-| Orchestration patterns (swarm / parallel / sequential)     | **orchestrator agent** + the **purinina plugin**                                 |
-| Per-category tools (recon, exploitation, web, …)           | custom **tools** in the purinina plugin                                          |
+| Orchestration patterns (swarm / parallel / sequential)     | **orchestrator agent** + the **lynx plugin**                                 |
+| Per-category tools (recon, exploitation, web, …)           | custom **tools** in the lynx plugin                                          |
 | Human-In-The-Loop                                          | central **HITL policy** in the plugin (`permission.ask` + `tool.execute.before`) |
 | Containerized virtualization (`--network host`, `NET_RAW`) | the **Docker sandbox** (`docker/`)                                               |
 
@@ -35,14 +35,14 @@ See [`docs/architecture.md`](./docs/architecture.md) for the full mapping.
 ## How it works
 
 ```
- host ──► purinina (launcher CLI)
+ host ──► lynx (launcher CLI)
             │  1. checks Docker is installed
-            │  2. builds the sandbox image if missing (Kali + tools + opencode + purinina, baked in)
+            │  2. builds the sandbox image if missing (Kali + tools + opencode + lynx, baked in)
             │  3. starts the container:  --network host  --cap-add NET_ADMIN,NET_RAW  seccomp=unconfined
             │  4. mounts host opencode auth (read-only) + your engagement workspace
             ▼
  sandbox container ──► opencode TUI
-            │   loads purinina global config (~/.config/opencode):
+            │   loads lynx global config (~/.config/opencode):
             │     • opencode.json   — providers, agents, permissions, plugin
             │     • plugin/         — HITL policy, sandbox guard, pentest tools
             │     • agent/          — orchestrator + recon + web-exploit + reporter
@@ -50,7 +50,7 @@ See [`docs/architecture.md`](./docs/architecture.md) for the full mapping.
         you ⇄ orchestrator ⇄ specialist subagents ⇄ tools  (every dangerous step gated by HITL)
 ```
 
-opencode for Purinina is **only ever launched inside the sandbox**. The plugin
+opencode for Lynx is **only ever launched inside the sandbox**. The plugin
 additionally refuses to arm its offensive tooling unless it detects the sandbox
 marker (defense in depth — see [`docs/sandbox.md`](./docs/sandbox.md)).
 
@@ -69,7 +69,7 @@ npm run build
 
 # 2. Launch — builds the sandbox image on first run, then drops you into opencode
 node dist/launcher/index.js
-#   (or `npm link` once, then just: purinina)
+#   (or `npm link` once, then just: lynx)
 ```
 
 On first launch the framework starts in **strict HITL** mode: every potentially
@@ -83,24 +83,24 @@ Early development.
   → agents → HITL → tools) with four agents: `orchestrator`, `recon`,
   `web-exploit`, `reporter`, plus per-agent model selection.
 - **Phase 2 (essential patterns):** the orchestration **pattern engine** —
-  `purinina_parallel`, `purinina_pipeline`, `purinina_swarm` — driving agents via
+  `lynx_parallel`, `lynx_pipeline`, `lynx_swarm` — driving agents via
   the opencode SDK (orchestrator-only; HITL still applies).
 
 Remaining CAI specialist agents, the `conditional`/`hierarchical` patterns and a
-declarative `purinina.yml` are added incrementally
+declarative `lynx.yml` are added incrementally
 (see [`docs/architecture.md`](./docs/architecture.md) → _Roadmap_).
 
 > After changing the plugin or agents, rebuild the sandbox image so the baked
-> config updates: `purinina build`.
+> config updates: `lynx build`.
 
 ## Repository layout
 
 ```
-purinina/
-├── src/launcher/          # host-side CLI (TypeScript) — the `purinina` command
+lynx/
+├── src/launcher/          # host-side CLI (TypeScript) — the `lynx` command
 ├── runtime/               # baked into the sandbox image as opencode global config
 │   ├── opencode.json      #   providers, agents, permissions, plugin registration
-│   ├── plugin/            #   the purinina plugin: HITL, sandbox guard, tools
+│   ├── plugin/            #   the lynx plugin: HITL, sandbox guard, tools
 │   ├── agent/             #   agent personas (markdown)
 │   └── workspace-skeleton # ready-made engagement folder structure
 ├── docker/                # Dockerfile + entrypoint + compose for the sandbox

@@ -1,6 +1,6 @@
 # Engagement workspace
 
-This is your working directory inside the Purinina sandbox. It is mounted from
+This is your working directory inside the Lynx sandbox. It is mounted from
 the host, so everything here persists across container restarts. opencode is
 launched with this directory as its project root.
 

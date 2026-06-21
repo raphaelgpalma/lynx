@@ -10,8 +10,8 @@ import { fileURLToPath } from "node:url"
 export type HitlMode = "strict" | "guided" | "auto"
 export type AuthMode = "mount" | "env"
 
-export interface PurininaConfig {
-  /** Root of the purinina repo (contains docker/Dockerfile and runtime/). */
+export interface LynxConfig {
+  /** Root of the lynx repo (contains docker/Dockerfile and runtime/). */
   repoRoot: string
   /** Docker image tag to build/run. */
   image: string
@@ -59,21 +59,21 @@ function resolveRepoRoot(): string {
   return resolve(here, "..", "..")
 }
 
-export function loadConfig(cwd: string = process.cwd()): PurininaConfig {
+export function loadConfig(cwd: string = process.cwd()): LynxConfig {
   loadDotEnv(cwd)
 
-  const workspaceRaw = process.env.PURININA_WORKSPACE ?? "./engagement"
+  const workspaceRaw = process.env.LYNX_WORKSPACE ?? "./engagement"
   const workspace = isAbsolute(workspaceRaw) ? workspaceRaw : resolve(cwd, workspaceRaw)
 
   return {
     repoRoot: resolveRepoRoot(),
-    image: process.env.PURININA_IMAGE ?? "purinina:latest",
-    container: process.env.PURININA_CONTAINER ?? "purinina-sandbox",
+    image: process.env.LYNX_IMAGE ?? "lynx:latest",
+    container: process.env.LYNX_CONTAINER ?? "lynx-sandbox",
     opencodeVersion: process.env.OPENCODE_VERSION ?? "1.17.8",
     workspace,
-    hitl: asHitl(process.env.PURININA_HITL),
-    authMode: process.env.PURININA_AUTH_MODE === "env" ? "env" : "mount",
+    hitl: asHitl(process.env.LYNX_HITL),
+    authMode: process.env.LYNX_AUTH_MODE === "env" ? "env" : "mount",
     hostAuthFile: resolve(homedir(), ".local/share/opencode/auth.json"),
-    model: process.env.PURININA_MODEL || undefined,
+    model: process.env.LYNX_MODEL || undefined,
   }
 }

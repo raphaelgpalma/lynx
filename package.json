@@ -1,5 +1,5 @@
 {
-  "name": "purinina",
+  "name": "lynx",
   "version": "0.1.0",
   "description": "A multi-agent cybersecurity (pentesting) framework that runs on top of opencode inside a hardened, host-networked Docker sandbox. Architecture inspired by CAI (Cybersecurity AI).",
   "type": "module",
@@ -7,16 +7,17 @@
   "author": "raphaelgpalma",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/raphaelgpalma/purinina.git"
+    "url": "git+ssh://git@github.com/raphaelgpalma/lynx.git"
   },
   "bin": {
-    "purinina": "./dist/launcher/index.js"
+    "lynx": "./dist/launcher/index.js"
   },
   "files": [
     "dist/",
     "runtime/",
     "docker/",
     "docs/",
+    "assets/",
     "README.md",
     "DISCLAIMER",
     "LICENSE"

@@ -81,7 +81,7 @@ export function runContainer(opts: RunOptions): number {
     "--name",
     opts.container,
     "--hostname",
-    "purinina",
+    "lynx",
     // Full host network access for pentesting (Linux).
     "--network",
     "host",
@@ -92,11 +92,11 @@ export function runContainer(opts: RunOptions): number {
     "--security-opt",
     "seccomp=unconfined",
     "-e",
-    "PURININA_SANDBOX=1",
+    "LYNX_SANDBOX=1",
     "-e",
-    `PURININA_HITL=${opts.hitl}`,
+    `LYNX_HITL=${opts.hitl}`,
     "-e",
-    "PURININA_WORKSPACE_DIR=/root/engagement",
+    "LYNX_WORKSPACE_DIR=/root/engagement",
     "-v",
     `${opts.workspace}:/root/engagement`,
   ]

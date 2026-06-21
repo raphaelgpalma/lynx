@@ -1,6 +1,6 @@
 # Human-In-The-Loop (HITL)
 
-Purinina keeps a human in control of dangerous actions — the same philosophy as
+Lynx keeps a human in control of dangerous actions — the same philosophy as
 CAI, realized with opencode's native permission machinery plus a plugin policy.
 
 ## The two layers
@@ -26,7 +26,7 @@ and protects the host:
 `external_directory: "deny"` blocks any tool from touching paths outside the
 engagement workspace — the model cannot read or write host files via file tools.
 
-### Layer 2 — the plugin policy (`runtime/plugin/purinina.ts`)
+### Layer 2 — the plugin policy (`runtime/plugin/lynx.ts`)
 
 Two hooks implement the policy:
 
@@ -39,7 +39,7 @@ Two hooks implement the policy:
 
 ## Risk tiers
 
-Every bash command is classified (this is Purinina's idiomatic analogue of CAI's
+Every bash command is classified (this is Lynx's idiomatic analogue of CAI's
 per-category tools):
 
 | Tier          | Meaning                                     | Examples                                                      |
@@ -56,7 +56,7 @@ The classifier splits pipelines on shell operators and inspects the leading
 binary of each segment, so `nmap … | grep open` is still `recon` and
 `echo hi && ls` is still `readonly`.
 
-## Modes (`PURININA_HITL`)
+## Modes (`LYNX_HITL`)
 
 | Action tier          | `strict` (default) | `guided` | `auto` (labs only) |
 | -------------------- | ------------------ | -------- | ------------------ |
@@ -72,12 +72,12 @@ binary of each segment, so `nmap … | grep open` is still `recon` and
 - **auto** — no prompts. Only for isolated labs/CTF you fully own. The safety
   floor (destructive/escape deny) still applies even here.
 
-Set it per launch: `PURININA_HITL=guided purinina`, or in `.env`.
+Set it per launch: `LYNX_HITL=guided lynx`, or in `.env`.
 
 ## What the user sees
 
 When an action is gated, opencode shows its standard approval prompt with
-**approve once / approve always (this session) / reject**. Purinina's policy only
+**approve once / approve always (this session) / reject**. Lynx's policy only
 decides _whether_ to prompt and what is hard-denied; the interaction itself is
 opencode's well-tested UI. You can also interrupt a running agent at any time
 (opencode's built-in interrupt) to take over — the CAI-style "human can always
@@ -87,5 +87,5 @@ step in" guarantee.
 
 Regardless of mode (including `auto`), `tool.execute.before` blocks `destructive`
 and `escape` commands by throwing before execution, and refuses to run `bash` at
-all if the `PURININA_SANDBOX` marker is absent. This is defense in depth: even a
+all if the `LYNX_SANDBOX` marker is absent. This is defense in depth: even a
 misconfiguration cannot let the model wipe a disk or escape the container.

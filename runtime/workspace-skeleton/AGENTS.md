@@ -1,11 +1,11 @@
-# Purinina — operating rules (read by every agent)
+# Lynx — operating rules (read by every agent)
 
-You are an agent in **Purinina**, a multi-agent pentesting framework running
+You are an agent in **Lynx**, a multi-agent pentesting framework running
 inside a hardened sandbox. These rules apply to all agents at all times.
 
 ## Authorization first
 
-1. Before any intrusive action, call `purinina_scope` (or read `scope/SCOPE.md`)
+1. Before any intrusive action, call `lynx_scope` (or read `scope/SCOPE.md`)
    and confirm the target is explicitly in scope.
 2. If scope is empty/unclear, STOP and ask the operator. Never test something
    that is not authorized.
@@ -26,7 +26,7 @@ inside a hardened sandbox. These rules apply to all agents at all times.
 
 ## Record as you go
 
-- Use `purinina_note` to log findings, decisions, and next steps to
+- Use `lynx_note` to log findings, decisions, and next steps to
   `notes/engagement-log.md`. The reporter relies on this trail.
 
 ## Be methodical

@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 /**
- * purinina — host launcher.
+ * lynx — host launcher.
  *
  * Brings up the hardened sandbox and drops you into opencode inside it. opencode
- * for Purinina is ONLY ever launched through this container; it is never run
+ * for Lynx is ONLY ever launched through this container; it is never run
  * directly on the host.
  *
- *   purinina            build (if needed) + start sandbox + open opencode
- *   purinina build      (re)build the sandbox image
- *   purinina shell      open a bash shell inside the sandbox
- *   purinina status     show docker / image / container state
- *   purinina stop       stop the sandbox container
- *   purinina down       stop and remove the sandbox container
- *   purinina --help
+ *   lynx            build (if needed) + start sandbox + open opencode
+ *   lynx build      (re)build the sandbox image
+ *   lynx shell      open a bash shell inside the sandbox
+ *   lynx status     show docker / image / container state
+ *   lynx stop       stop the sandbox container
+ *   lynx down       stop and remove the sandbox container
+ *   lynx --help
  */
 import { existsSync, mkdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { loadConfig, type PurininaConfig } from "./config.js"
+import { loadConfig, type LynxConfig } from "./config.js"
 import * as docker from "./docker.js"
 import {
   discoverAgentNames,
@@ -38,6 +38,7 @@ const RED = "\x1b[31m"
 const GREEN = "\x1b[32m"
 const YELLOW = "\x1b[33m"
 const CYAN = "\x1b[36m"
+const DARKRED = "\x1b[38;5;88m" // deep blood-red (256-color) for the banner
 
 const log = (m: string) => console.log(m)
 const info = (m: string) => console.log(`${CYAN}›${RESET} ${m}`)
@@ -45,7 +46,18 @@ const ok = (m: string) => console.log(`${GREEN}✓${RESET} ${m}`)
 const warn = (m: string) => console.log(`${YELLOW}!${RESET} ${m}`)
 const fail = (m: string) => console.error(`${RED}✗ ${m}${RESET}`)
 
-function version(cfg: PurininaConfig): string {
+/** Print the Lynx ASCII banner (best-effort; never fatal). */
+function printBanner(cfg: LynxConfig): void {
+  try {
+    const art = readFileSync(resolve(cfg.repoRoot, "assets", "lynx-banner.txt"), "utf8")
+    log(BOLD + DARKRED + art + RESET)
+  } catch {
+    // Banner is cosmetic — ignore if the asset is missing.
+    log(`${BOLD}${DARKRED}LYNX${RESET} — multi-agent offensive security, under control`)
+  }
+}
+
+function version(cfg: LynxConfig): string {
   try {
     const pkg = JSON.parse(readFileSync(resolve(cfg.repoRoot, "package.json"), "utf8"))
     return String(pkg.version ?? "0.0.0")
@@ -54,11 +66,11 @@ function version(cfg: PurininaConfig): string {
   }
 }
 
-function printHelp(cfg: PurininaConfig): void {
-  log(`${BOLD}purinina${RESET} ${DIM}v${version(cfg)}${RESET} — multi-agent pentesting on opencode
+function printHelp(cfg: LynxConfig): void {
+  log(`${BOLD}lynx${RESET} ${DIM}v${version(cfg)}${RESET} — multi-agent pentesting on opencode
 
 ${BOLD}Usage${RESET}
-  purinina [command]
+  lynx [command]
 
 ${BOLD}Commands${RESET}
   ${CYAN}(default)${RESET}   build if needed, start the sandbox, open opencode (orchestrator)
@@ -71,12 +83,12 @@ ${BOLD}Commands${RESET}
   ${CYAN}help${RESET}        show this help
 
 ${BOLD}Key settings${RESET} ${DIM}(env or .env)${RESET}
-  PURININA_WORKSPACE  host dir mounted as the engagement workspace (default ./engagement)
-  PURININA_HITL       strict | guided | auto   (default strict)
-  PURININA_MODEL      default model, e.g. ollama-cloud/qwen3-coder:480b
-                      ${DIM}(per-agent models: 'purinina models')${RESET}
-  PURININA_IMAGE      image tag   (default purinina:latest)
-  PURININA_CONTAINER  container name (default purinina-sandbox)
+  LYNX_WORKSPACE  host dir mounted as the engagement workspace (default ./engagement)
+  LYNX_HITL       strict | guided | auto   (default strict)
+  LYNX_MODEL      default model, e.g. ollama-cloud/qwen3-coder:480b
+                      ${DIM}(per-agent models: 'lynx models')${RESET}
+  LYNX_IMAGE      image tag   (default lynx:latest)
+  LYNX_CONTAINER  container name (default lynx-sandbox)
 
 ${DIM}Offensive-security tool — authorized testing only. See DISCLAIMER.${RESET}`)
 }
@@ -86,7 +98,7 @@ function requireDocker(): void {
   if (!docker.isDockerInstalled()) {
     fail("Docker is required but was not found on PATH.")
     log(
-      `${DIM}Install Docker, then re-run. Purinina runs entirely inside a Docker sandbox.${RESET}`,
+      `${DIM}Install Docker, then re-run. Lynx runs entirely inside a Docker sandbox.${RESET}`,
     )
     process.exit(1)
   }
@@ -97,7 +109,7 @@ function requireDocker(): void {
   }
 }
 
-function ensureImage(cfg: PurininaConfig, force = false): void {
+function ensureImage(cfg: LynxConfig, force = false): void {
   if (!force && docker.imageExists(cfg.image)) {
     ok(`Image ${cfg.image} present.`)
     return
@@ -119,7 +131,7 @@ function ensureImage(cfg: PurininaConfig, force = false): void {
 }
 
 /** Build the mount list + env for the container based on auth mode. */
-function authWiring(cfg: PurininaConfig): {
+function authWiring(cfg: LynxConfig): {
   mounts: Array<[string, string, boolean?]>
   env: Record<string, string>
 } {
@@ -131,7 +143,7 @@ function authWiring(cfg: PurininaConfig): {
     } else {
       warn(
         `No host opencode auth found at ${cfg.hostAuthFile}. ` +
-          `Run 'opencode auth login' on the host, or set PURININA_AUTH_MODE=env.`,
+          `Run 'opencode auth login' on the host, or set LYNX_AUTH_MODE=env.`,
       )
     }
   } else {
@@ -146,13 +158,13 @@ function authWiring(cfg: PurininaConfig): {
       if (v) env[key] = v
     }
     if (Object.keys(env).length === 0) {
-      warn("PURININA_AUTH_MODE=env but no provider API keys found in the environment.")
+      warn("LYNX_AUTH_MODE=env but no provider API keys found in the environment.")
     }
   }
   return { mounts, env }
 }
 
-function ensureContainer(cfg: PurininaConfig): void {
+function ensureContainer(cfg: LynxConfig): void {
   const state = docker.containerState(cfg.container)
   if (state === "running") {
     ok(`Sandbox ${cfg.container} is running.`)
@@ -161,7 +173,7 @@ function ensureContainer(cfg: PurininaConfig): void {
   if (state === "stopped") {
     info(`Starting existing sandbox ${cfg.container}…`)
     if (docker.startContainer(cfg.container) !== 0) {
-      fail("Failed to start the existing container. Try 'purinina down' then retry.")
+      fail("Failed to start the existing container. Try 'lynx down' then retry.")
       process.exit(1)
     }
     return
@@ -191,7 +203,7 @@ function ensureContainer(cfg: PurininaConfig): void {
  * We do NOT pass `--model` to opencode (it would override every agent); the
  * merged workspace config drives both the default and per-agent models.
  */
-function applyModels(cfg: PurininaConfig): { default: string; agents: Record<string, string> } {
+function applyModels(cfg: LynxConfig): { default: string; agents: Record<string, string> } {
   mkdirSync(cfg.workspace, { recursive: true })
   const agents = discoverAgentNames(cfg.repoRoot)
   const sel = loadSelection(process.cwd(), cfg.model ?? FALLBACK_MODEL)
@@ -201,27 +213,28 @@ function applyModels(cfg: PurininaConfig): { default: string; agents: Record<str
 }
 
 function openOpencode(
-  cfg: PurininaConfig,
+  cfg: LynxConfig,
   models: { default: string; agents: Record<string, string> },
 ): never {
   const orchestrator = models.agents["orchestrator"] ?? models.default
   info(`Opening opencode (HITL=${cfg.hitl}, orchestrator=${orchestrator})…`)
   log(
     DIM +
-      "models per agent are set in <workspace>/opencode.json — edit with 'purinina models'" +
+      "models per agent are set in <workspace>/opencode.json — edit with 'lynx models'" +
       RESET,
   )
   log(DIM + "─".repeat(60) + RESET)
   // Start on the orchestrator. No --model: per-agent models come from config.
   const code = docker.execInteractive({
     container: cfg.container,
-    env: { PURININA_HITL: cfg.hitl },
+    env: { LYNX_HITL: cfg.hitl },
     command: ["opencode", "--agent", "orchestrator"],
   })
   process.exit(code)
 }
 
-function cmdLaunch(cfg: PurininaConfig): void {
+function cmdLaunch(cfg: LynxConfig): void {
+  printBanner(cfg)
   requireDocker()
   ensureImage(cfg)
   const models = applyModels(cfg)
@@ -229,12 +242,12 @@ function cmdLaunch(cfg: PurininaConfig): void {
   openOpencode(cfg, models)
 }
 
-function cmdBuild(cfg: PurininaConfig): void {
+function cmdBuild(cfg: LynxConfig): void {
   requireDocker()
   ensureImage(cfg, true)
 }
 
-function cmdShell(cfg: PurininaConfig): void {
+function cmdShell(cfg: LynxConfig): void {
   requireDocker()
   ensureImage(cfg)
   applyModels(cfg)
@@ -242,14 +255,14 @@ function cmdShell(cfg: PurininaConfig): void {
   info("Opening a shell inside the sandbox…")
   const code = docker.execInteractive({
     container: cfg.container,
-    env: { PURININA_HITL: cfg.hitl },
+    env: { LYNX_HITL: cfg.hitl },
     command: ["/bin/bash"],
   })
   process.exit(code)
 }
 
-function cmdStatus(cfg: PurininaConfig): void {
-  log(`${BOLD}purinina status${RESET}`)
+function cmdStatus(cfg: LynxConfig): void {
+  log(`${BOLD}lynx status${RESET}`)
   log(`  docker installed : ${docker.isDockerInstalled() ? GREEN + "yes" : RED + "no"}${RESET}`)
   log(`  docker running   : ${docker.isDockerRunning() ? GREEN + "yes" : RED + "no"}${RESET}`)
   log(
@@ -263,20 +276,20 @@ function cmdStatus(cfg: PurininaConfig): void {
   const agents = discoverAgentNames(cfg.repoRoot)
   const sel = loadSelection(process.cwd(), cfg.model ?? FALLBACK_MODEL)
   const models = resolveModels(agents, sel)
-  log(`  models           : ${DIM}(default ${sel.default}; edit with 'purinina models')${RESET}`)
+  log(`  models           : ${DIM}(default ${sel.default}; edit with 'lynx models')${RESET}`)
   for (const a of agents) {
     const overridden = sel.agents[a] ? "" : `${DIM} (default)${RESET}`
     log(`    ${a.padEnd(14)} ${models[a]}${overridden}`)
   }
 }
 
-function cmdModels(cfg: PurininaConfig): void {
+function cmdModels(cfg: LynxConfig): void {
   const agents = discoverAgentNames(cfg.repoRoot)
   if (agents.length === 0) {
-    fail("No agents found under runtime/agent/. Run from the purinina repo.")
+    fail("No agents found under runtime/agent/. Run from the lynx repo.")
     process.exit(1)
   }
-  // `purinina models list` -> just print accessible model ids.
+  // `lynx models list` -> just print accessible model ids.
   if ((process.argv[3] ?? "").toLowerCase() === "list") {
     const models = listAccessibleModels()
     if (models.length === 0) {
@@ -294,7 +307,7 @@ function cmdModels(cfg: PurininaConfig): void {
   })
 }
 
-function cmdStop(cfg: PurininaConfig): void {
+function cmdStop(cfg: LynxConfig): void {
   requireDocker()
   if (docker.containerState(cfg.container) === "absent") {
     warn("No sandbox container to stop.")
@@ -304,7 +317,7 @@ function cmdStop(cfg: PurininaConfig): void {
   ok("Sandbox stopped.")
 }
 
-function cmdDown(cfg: PurininaConfig): void {
+function cmdDown(cfg: LynxConfig): void {
   requireDocker()
   if (docker.containerState(cfg.container) === "absent") {
     warn("No sandbox container to remove.")

@@ -1,6 +1,6 @@
 # Agents
 
-Purinina's v1 ships four agents. Each is an opencode agent defined in
+Lynx's v1 ships four agents. Each is an opencode agent defined in
 `runtime/agent/*.md` (frontmatter for config, body for the system prompt).
 "Tool categories" — CAI's idea that a recon agent shouldn't exploit — are
 expressed with **per-agent permissions**.
@@ -20,21 +20,21 @@ The orchestrator is the primary agent you talk to. It can delegate two ways:
 
 - **Single hand-off** — opencode's built-in `task` tool (the idiomatic
   equivalent of CAI's `handoff` / `transfer_to_X`).
-- **Structured multi-agent coordination** — the Purinina **pattern engine**
+- **Structured multi-agent coordination** — the Lynx **pattern engine**
   (Phase 2), exposed as orchestrator-only tools:
 
 ```
 operator → orchestrator
-   ├── purinina_parallel([{recon, host A}, {recon, host B}, {recon, host C}])  # fan-out, concurrent
-   ├── purinina_pipeline(["recon","web-exploit","reporter"], input)            # assembly line
-   └── purinina_swarm(entry="recon", input="own the box")                      # peer-to-peer hand-offs
+   ├── lynx_parallel([{recon, host A}, {recon, host B}, {recon, host C}])  # fan-out, concurrent
+   ├── lynx_pipeline(["recon","web-exploit","reporter"], input)            # assembly line
+   └── lynx_swarm(entry="recon", input="own the box")                      # peer-to-peer hand-offs
 ```
 
 The engine drives each agent via the opencode SDK (its own session per agent),
 still under the HITL gate, using each agent's configured model. In a swarm, an
 agent hands off by ending its reply with `HANDOFF: <agent> — <task>` (or `DONE`).
 See [architecture.md](./architecture.md) for the full design, bounds, and the
-remaining patterns on the roadmap (conditional, hierarchical, `purinina.yml`).
+remaining patterns on the roadmap (conditional, hierarchical, `lynx.yml`).
 
 ## Choosing a model per agent
 
@@ -44,14 +44,14 @@ You can assign any model accessible through opencode to each agent individually
 `reporter`.
 
 ```bash
-purinina models          # interactive: pick a model for the default + each agent
-purinina models list     # print every model accessible through opencode
-purinina status          # show the current per-agent assignment
+lynx models          # interactive: pick a model for the default + each agent
+lynx models list     # print every model accessible through opencode
+lynx status          # show the current per-agent assignment
 ```
 
 How it works (no image rebuild needed):
 
-- Choices are saved to `purinina.models.json` next to where you run the launcher:
+- Choices are saved to `lynx.models.json` next to where you run the launcher:
   ```json
   {
     "default": "ollama-cloud/qwen3-coder:480b",
@@ -65,9 +65,9 @@ How it works (no image rebuild needed):
 - On launch, the launcher merges these into `<workspace>/opencode.json` as the
   top-level `model` (default + fallback) and `agent.<name>.model` per agent.
   opencode deep-merges this project config over the global one, so the per-agent
-  models apply while the Purinina plugin, permissions and agents keep working.
+  models apply while the Lynx plugin, permissions and agents keep working.
 - An agent without an explicit choice uses the default. You can also hand-edit
-  `purinina.models.json` (or the workspace `opencode.json`) directly.
+  `lynx.models.json` (or the workspace `opencode.json`) directly.
 
 ## Per-agent tool categories (example)
 
@@ -98,13 +98,13 @@ permission:
 
 Every agent also reads the workspace `AGENTS.md` (auto-loaded by opencode), which
 enforces: confirm scope first, respect HITL, stay inside the workspace, and log
-findings with `purinina_note`. See `runtime/workspace-skeleton/AGENTS.md`.
+findings with `lynx_note`. See `runtime/workspace-skeleton/AGENTS.md`.
 
 ## Engagement tools (from the plugin)
 
-- **`purinina_scope`** — read `scope/SCOPE.md`; agents call it before intrusive
+- **`lynx_scope`** — read `scope/SCOPE.md`; agents call it before intrusive
   actions to confirm authorization.
-- **`purinina_note`** — append a timestamped, phase-tagged entry to
+- **`lynx_note`** — append a timestamped, phase-tagged entry to
   `notes/engagement-log.md`; the reporter builds the deliverable from this trail.
 
 ## Adding an agent
@@ -113,4 +113,4 @@ findings with `purinina_note`. See `runtime/workspace-skeleton/AGENTS.md`.
    `permission`, optional `model`/`temperature`) and a system-prompt body.
 2. Constrain its tool category via `permission.bash` patterns.
 3. Mention it in the orchestrator's delegation list so it gets used.
-4. Rebuild the image (`purinina build`).
+4. Rebuild the image (`lynx build`).

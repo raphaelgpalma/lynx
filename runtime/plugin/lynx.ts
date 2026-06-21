@@ -1,10 +1,10 @@
 /**
- * Purinina — opencode plugin
+ * Lynx — opencode plugin
  * ==========================
  *
- * This single plugin file is the heart of Purinina's safety + tooling layer. It
+ * This single plugin file is the heart of Lynx's safety + tooling layer. It
  * is loaded by opencode as GLOBAL config inside the sandbox container
- * (~/.config/opencode/plugin/purinina.ts) and provides four things:
+ * (~/.config/opencode/plugin/lynx.ts) and provides four things:
  *
  *   1. A consistent Human-In-The-Loop (HITL) policy, mirroring CAI's philosophy
  *      that a human stays in control of dangerous actions. Implemented on top of
@@ -12,7 +12,7 @@
  *
  *   2. A hard safety floor + sandbox guard (`tool.execute.before`): destructive
  *      and host-escape commands are blocked in *every* mode, and offensive
- *      tooling refuses to run outside the Purinina sandbox.
+ *      tooling refuses to run outside the Lynx sandbox.
  *
  *   3. Engagement helper tools (`tool`): structured note-taking and scope
  *      reading, so agents keep findings organized in the workspace.
@@ -23,7 +23,7 @@
  *
  * NOTE: opencode loads *every* file in the plugin directory as a plugin, so this
  * stays a single self-contained file. Helper functions are module-private (not
- * exported); only `PurininaPlugin` is exported.
+ * exported); only `LynxPlugin` is exported.
  */
 
 import { tool, type Plugin } from "@opencode-ai/plugin"
@@ -38,19 +38,19 @@ import { join } from "node:path"
 type HitlMode = "strict" | "guided" | "auto"
 
 function hitlMode(): HitlMode {
-  const v = (process.env.PURININA_HITL ?? "strict").toLowerCase()
+  const v = (process.env.LYNX_HITL ?? "strict").toLowerCase()
   return v === "guided" || v === "auto" ? v : "strict"
 }
 
 function inSandbox(): boolean {
-  return process.env.PURININA_SANDBOX === "1"
+  return process.env.LYNX_SANDBOX === "1"
 }
 
 // ---------------------------------------------------------------------------
 // Command risk classification
 // ---------------------------------------------------------------------------
 //
-// This is the Purinina analogue of CAI's per-category tools. Instead of wrapping
+// This is the Lynx analogue of CAI's per-category tools. Instead of wrapping
 // every binary as its own tool, we let agents use opencode's robust `bash` tool
 // and classify each command into a risk tier. The tier drives the HITL decision.
 
@@ -302,14 +302,14 @@ function commandFromPermission(p: {
 
 function log(msg: string): void {
   // opencode captures plugin stderr into its logs.
-  console.error(`[purinina] ${msg}`)
+  console.error(`[lynx] ${msg}`)
 }
 
 // ---------------------------------------------------------------------------
 // Orchestration pattern engine (Phase 2)
 // ---------------------------------------------------------------------------
 //
-// The engine is the Purinina analogue of CAI's pattern system. It drives agents
+// The engine is the Lynx analogue of CAI's pattern system. It drives agents
 // programmatically through the opencode SDK client (session.create +
 // session.prompt with a target `agent`), implementing fixed coordination
 // topologies instead of leaving coordination to the LLM's improvisation.
@@ -364,7 +364,7 @@ async function runAgent(ctx: RunCtx, agent: string, input: string): Promise<Agen
   if (ctx.signal?.aborted) return { agent, output: "", error: "aborted" }
   try {
     const created = await ctx.client.session.create({
-      body: { parentID: ctx.parentID, title: `purinina:${agent}` },
+      body: { parentID: ctx.parentID, title: `lynx:${agent}` },
       query: { directory: ctx.directory },
     })
     const id = created.data?.id
@@ -416,7 +416,7 @@ async function runPipeline(ctx: RunCtx, agents: string[], input: string): Promis
 
 function swarmPreamble(allowed: string[]): string {
   return [
-    "You are operating inside a Purinina SWARM.",
+    "You are operating inside a Lynx SWARM.",
     `Specialists you can hand off to: ${allowed.length ? allowed.join(", ") : "(any available agent)"}.`,
     "When another specialist should take over, end your reply with exactly:",
     "HANDOFF: <agent> — <what they should do next>",
@@ -498,13 +498,13 @@ function formatResults(results: AgentResult[]): string {
 // Plugin
 // ---------------------------------------------------------------------------
 
-export const PurininaPlugin: Plugin = async ({ client, directory }) => {
+export const LynxPlugin: Plugin = async ({ client, directory }) => {
   // The engine drives agents through this client (bridged to the structural
   // EngineClient view; the real client is awaitable to the same {data,error}).
   const engineClient = client as unknown as EngineClient
   if (!inSandbox()) {
     log(
-      "WARNING: PURININA_SANDBOX marker not found. Offensive tooling is disabled outside the sandbox.",
+      "WARNING: LYNX_SANDBOX marker not found. Offensive tooling is disabled outside the sandbox.",
     )
   } else {
     log(`active · HITL=${hitlMode()} · workspace=${directory}`)
@@ -550,7 +550,7 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
       // Offensive shell only runs inside the sandbox.
       if (!inSandbox()) {
         throw new Error(
-          "[purinina] bash is disabled outside the Purinina sandbox. Launch via the `purinina` command.",
+          "[lynx] bash is disabled outside the Lynx sandbox. Launch via the `lynx` command.",
         )
       }
 
@@ -558,7 +558,7 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
       if (tier === "destructive" || tier === "escape") {
         log(`BLOCKED [${tier}] :: ${command.slice(0, 200)}`)
         throw new Error(
-          `[purinina] blocked ${tier} command by safety policy. This action is never permitted.`,
+          `[lynx] blocked ${tier} command by safety policy. This action is never permitted.`,
         )
       }
     },
@@ -567,7 +567,7 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
      * Engagement helper tools — keep findings structured in the workspace.
      */
     tool: {
-      purinina_note: tool({
+      lynx_note: tool({
         description:
           "Append a timestamped entry to the engagement log (notes/engagement-log.md). Use this to record findings, decisions, and next steps as you work.",
         args: {
@@ -588,7 +588,7 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
         },
       }),
 
-      purinina_scope: tool({
+      lynx_scope: tool({
         description:
           "Read the engagement scope/authorization (scope/SCOPE.md). ALWAYS call this before any intrusive action to confirm the target is in scope and authorized.",
         args: {},
@@ -607,7 +607,7 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
 
       // --- Orchestration pattern engine (orchestrator-only; disabled on subagents) ---
 
-      purinina_parallel: tool({
+      lynx_parallel: tool({
         description:
           "Run several agents CONCURRENTLY, each on its own task in an isolated context, and return all results. Use for fan-out work (e.g. recon several hosts at once). Orchestrator only.",
         args: {
@@ -633,7 +633,7 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
         },
       }),
 
-      purinina_pipeline: tool({
+      lynx_pipeline: tool({
         description:
           "Run agents SEQUENTIALLY, feeding each one the previous agent's output (assembly line, e.g. recon -> web-exploit -> reporter). Orchestrator only.",
         args: {
@@ -653,7 +653,7 @@ export const PurininaPlugin: Plugin = async ({ client, directory }) => {
         },
       }),
 
-      purinina_swarm: tool({
+      lynx_swarm: tool({
         description:
           "Start a SWARM: an entry agent works the task and hands off to other agents as needed (peer-to-peer), until DONE. Use for open-ended engagements where the next specialist depends on what is found. Orchestrator only.",
         args: {

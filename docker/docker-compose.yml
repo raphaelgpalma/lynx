@@ -1,7 +1,7 @@
-# Alternative way to run the sandbox (the `purinina` launcher does the
+# Alternative way to run the sandbox (the `lynx` launcher does the
 # equivalent with `docker run`). Usage:
 #
-#   PURININA_WORKSPACE=./engagement docker compose -f docker/docker-compose.yml up -d
+#   LYNX_WORKSPACE=./engagement docker compose -f docker/docker-compose.yml up -d
 #   docker compose -f docker/docker-compose.yml exec sandbox opencode
 #
 # SECURITY NOTE: host networking + raw-socket caps are intentional and required
@@ -14,8 +14,8 @@ services:
       dockerfile: docker/Dockerfile
       args:
         OPENCODE_VERSION: ${OPENCODE_VERSION:-1.17.8}
-    image: ${PURININA_IMAGE:-purinina:latest}
-    container_name: ${PURININA_CONTAINER:-purinina-sandbox}
+    image: ${LYNX_IMAGE:-lynx:latest}
+    container_name: ${LYNX_CONTAINER:-lynx-sandbox}
     # Full host network access for pentesting (Linux only).
     network_mode: host
     cap_add:
@@ -24,12 +24,12 @@ services:
     security_opt:
       - seccomp=unconfined # broad tool compatibility (strace, ptrace, etc.)
     environment:
-      PURININA_SANDBOX: "1"
-      PURININA_HITL: ${PURININA_HITL:-strict}
-      PURININA_WORKSPACE_DIR: /root/engagement
+      LYNX_SANDBOX: "1"
+      LYNX_HITL: ${LYNX_HITL:-strict}
+      LYNX_WORKSPACE_DIR: /root/engagement
     volumes:
       # Your engagement files (loot, evidence, notes) persist on the host.
-      - ${PURININA_WORKSPACE:-./engagement}:/root/engagement
+      - ${LYNX_WORKSPACE:-./engagement}:/root/engagement
       # Reuse host opencode credentials, read-only. Never written from inside.
       - ${HOME}/.local/share/opencode/auth.json:/root/.local/share/opencode/auth.json:ro
     # Keep the container alive; exec opencode into it on demand.

@@ -1,8 +1,8 @@
 {
-  "name": "purinina-plugin",
+  "name": "lynx-plugin",
   "version": "0.1.0",
   "private": true,
-  "description": "Purinina opencode plugin: central HITL policy, sandbox guard, and engagement tools.",
+  "description": "Lynx opencode plugin: central HITL policy, sandbox guard, and engagement tools.",
   "type": "module",
   "dependencies": {
     "@opencode-ai/plugin": "^1.3.2"
