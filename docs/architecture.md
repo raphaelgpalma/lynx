@@ -23,23 +23,23 @@ the entire architecture is present the moment opencode starts inside the box.
 
 ## CAI → Lynx mapping
 
-| CAI concept (Python)                                                                    | Lynx realization                                                                           | Where                                                  |
-| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `Agent` dataclass (name, instructions, tools, model…)                                   | opencode agent (markdown + frontmatter)                                                        | `runtime/agent/*.md`                                   |
-| Agent `instructions` / system prompt                                                    | agent markdown body + global `AGENTS.md`                                                       | `runtime/agent/*`, workspace `AGENTS.md`               |
-| `handoff` → `transfer_to_X` tool                                                        | opencode built-in **`task`** tool (orchestrator → subagent)                                    | `orchestrator.md`                                      |
-| Orchestration **patterns** (swarm / parallel / sequential / hierarchical / conditional) | Phase 1: orchestrator + `task`. Phase 2 (done): pattern engine — parallel/pipeline/swarm tools | `orchestrator.md`, `plugin` engine                     |
-| Per-category **tools** (recon, exploitation, web…)                                      | opencode `bash` + per-agent permission categories + risk classifier                            | `runtime/agent/*`, plugin                              |
-| Tool execution (`generic_linux_command`)                                                | opencode `bash` tool                                                                           | built-in                                               |
-| Agent **factory / registry** + `agents.yml`                                             | opencode agent auto-discovery from `agent/`                                                    | built-in                                               |
+| CAI concept (Python)                                                                    | Lynx realization                                                                               | Where                                              |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `Agent` dataclass (name, instructions, tools, model…)                                   | opencode agent (markdown + frontmatter)                                                        | `runtime/agent/*.md`                               |
+| Agent `instructions` / system prompt                                                    | agent markdown body + global `AGENTS.md`                                                       | `runtime/agent/*`, workspace `AGENTS.md`           |
+| `handoff` → `transfer_to_X` tool                                                        | opencode built-in **`task`** tool (orchestrator → subagent)                                    | `orchestrator.md`                                  |
+| Orchestration **patterns** (swarm / parallel / sequential / hierarchical / conditional) | Phase 1: orchestrator + `task`. Phase 2 (done): pattern engine — parallel/pipeline/swarm tools | `orchestrator.md`, `plugin` engine                 |
+| Per-category **tools** (recon, exploitation, web…)                                      | opencode `bash` + per-agent permission categories + risk classifier                            | `runtime/agent/*`, plugin                          |
+| Tool execution (`generic_linux_command`)                                                | opencode `bash` tool                                                                           | built-in                                           |
+| Agent **factory / registry** + `agents.yml`                                             | opencode agent auto-discovery from `agent/`                                                    | built-in                                           |
 | **Human-In-The-Loop**                                                                   | central policy in the plugin (`permission.ask` + `tool.execute.before`)                        | `runtime/plugin/lynx.ts`, see [hitl.md](./hitl.md) |
-| **Virtualization** (`--network host`, `NET_RAW`, seccomp unconfined)                    | the Docker sandbox                                                                             | `docker/`, see [sandbox.md](./sandbox.md)              |
-| `cai` CLI entry point                                                                   | the `lynx` host launcher                                                                   | `src/launcher/`                                        |
+| **Virtualization** (`--network host`, `NET_RAW`, seccomp unconfined)                    | the Docker sandbox                                                                             | `docker/`, see [sandbox.md](./sandbox.md)          |
+| `cai` CLI entry point                                                                   | the `lynx-sec` host launcher                                                                   | `src/launcher/`                                    |
 
 ## Runtime topology
 
 ```
-host: `lynx` launcher (src/launcher)
+host: `lynx-sec` launcher (src/launcher)
    │  docker run --network host --cap-add NET_ADMIN,NET_RAW  (see sandbox.md)
    ▼
 sandbox container

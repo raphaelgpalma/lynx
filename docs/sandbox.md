@@ -23,7 +23,7 @@ baked in).
   `loot/`, `evidence/`, `reports/`, `notes/`, `AGENTS.md`).
 
 > opencode is installed as part of bringing the sandbox up — Docker is a hard
-> requirement, and the `lynx` launcher refuses to run without it.
+> requirement, and the `lynx-sec` launcher refuses to run without it.
 
 ## How it runs (`src/launcher` / `docker/docker-compose.yml`)
 

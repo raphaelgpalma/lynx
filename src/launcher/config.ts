@@ -11,7 +11,7 @@ export type HitlMode = "strict" | "guided" | "auto"
 export type AuthMode = "mount" | "env"
 
 export interface LynxConfig {
-  /** Root of the lynx repo (contains docker/Dockerfile and runtime/). */
+  /** Root of the lynx-sec repo (contains docker/Dockerfile and runtime/). */
   repoRoot: string
   /** Docker image tag to build/run. */
   image: string

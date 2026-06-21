@@ -111,7 +111,7 @@ export function writeWorkspaceModelConfig(
 }
 
 // ---------------------------------------------------------------------------
-// Interactive selector (`lynx models`)
+// Interactive selector (`lynx-sec models`)
 // ---------------------------------------------------------------------------
 
 function ask(rl: ReturnType<typeof createInterface>, q: string): Promise<string> {

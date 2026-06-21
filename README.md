@@ -50,7 +50,7 @@ See [`docs/architecture.md`](./docs/architecture.md) for the full mapping.
 ## How it works
 
 ```
- host ──► lynx (launcher CLI)
+ host ──► lynx-sec (launcher CLI)
             │  1. checks Docker is installed
             │  2. builds the sandbox image if missing (Kali + tools + opencode + lynx, baked in)
             │  3. starts the container:  --network host  --cap-add NET_ADMIN,NET_RAW  seccomp=unconfined
@@ -84,7 +84,7 @@ npm run build
 
 # 2. Launch — builds the sandbox image on first run, then drops you into opencode
 node dist/launcher/index.js
-#   (or `npm link` once, then just: lynx)
+#   (or `npm link` once, then just: lynx-sec)
 ```
 
 On first launch the framework starts in **strict HITL** mode: every potentially
@@ -110,13 +110,13 @@ declarative `lynx.yml` are added incrementally
 (see [`docs/architecture.md`](./docs/architecture.md) → _Roadmap_).
 
 > After changing the plugin or agents, rebuild the sandbox image so the baked
-> config updates: `lynx build`.
+> config updates: `lynx-sec build`.
 
 ## Repository layout
 
 ```
-lynx/
-├── src/launcher/          # host-side CLI (TypeScript) — the `lynx` command
+lynx-sec/
+├── src/launcher/          # host-side CLI (TypeScript) — the `lynx-sec` command
 ├── runtime/               # baked into the sandbox image as opencode global config
 │   ├── opencode.json      #   providers, agents, permissions, plugin registration
 │   ├── plugin/            #   the lynx plugin: HITL, sandbox guard, tools

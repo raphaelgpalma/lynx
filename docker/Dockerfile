@@ -13,7 +13,7 @@ FROM kalilinux/kali-rolling
 
 LABEL org.opencontainers.image.title="lynx-sandbox" \
       org.opencontainers.image.description="Multi-agent pentesting sandbox (opencode + lynx)" \
-      org.opencontainers.image.source="https://github.com/raphaelgpalma/lynx"
+      org.opencontainers.image.source="https://github.com/raphaelgpalma/lynx-sec"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \

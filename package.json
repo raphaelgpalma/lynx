@@ -1,5 +1,5 @@
 {
-  "name": "lynx",
+  "name": "lynx-sec",
   "version": "0.1.0",
   "description": "A multi-agent cybersecurity (pentesting) framework that runs on top of opencode inside a hardened, host-networked Docker sandbox. Architecture inspired by CAI (Cybersecurity AI).",
   "type": "module",
@@ -7,10 +7,10 @@
   "author": "raphaelgpalma",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/raphaelgpalma/lynx.git"
+    "url": "git+ssh://git@github.com/raphaelgpalma/lynx-sec.git"
   },
   "bin": {
-    "lynx": "./dist/launcher/index.js"
+    "lynx-sec": "./dist/launcher/index.js"
   },
   "files": [
     "dist/",

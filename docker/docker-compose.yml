@@ -1,4 +1,4 @@
-# Alternative way to run the sandbox (the `lynx` launcher does the
+# Alternative way to run the sandbox (the `lynx-sec` launcher does the
 # equivalent with `docker run`). Usage:
 #
 #   LYNX_WORKSPACE=./engagement docker compose -f docker/docker-compose.yml up -d

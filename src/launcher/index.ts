@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * lynx — host launcher.
+ * lynx-sec — host launcher.
  *
  * Brings up the hardened sandbox and drops you into opencode inside it. opencode
  * for Lynx is ONLY ever launched through this container; it is never run
  * directly on the host.
  *
- *   lynx            build (if needed) + start sandbox + open opencode
- *   lynx build      (re)build the sandbox image
- *   lynx shell      open a bash shell inside the sandbox
- *   lynx status     show docker / image / container state
- *   lynx stop       stop the sandbox container
- *   lynx down       stop and remove the sandbox container
- *   lynx --help
+ *   lynx-sec            build (if needed) + start sandbox + open opencode
+ *   lynx-sec build      (re)build the sandbox image
+ *   lynx-sec shell      open a bash shell inside the sandbox
+ *   lynx-sec status     show docker / image / container state
+ *   lynx-sec stop       stop the sandbox container
+ *   lynx-sec down       stop and remove the sandbox container
+ *   lynx-sec --help
  */
 import { existsSync, mkdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
@@ -67,10 +67,10 @@ function version(cfg: LynxConfig): string {
 }
 
 function printHelp(cfg: LynxConfig): void {
-  log(`${BOLD}lynx${RESET} ${DIM}v${version(cfg)}${RESET} — multi-agent pentesting on opencode
+  log(`${BOLD}lynx-sec${RESET} ${DIM}v${version(cfg)}${RESET} — multi-agent pentesting on opencode
 
 ${BOLD}Usage${RESET}
-  lynx [command]
+  lynx-sec [command]
 
 ${BOLD}Commands${RESET}
   ${CYAN}(default)${RESET}   build if needed, start the sandbox, open opencode (orchestrator)
@@ -86,7 +86,7 @@ ${BOLD}Key settings${RESET} ${DIM}(env or .env)${RESET}
   LYNX_WORKSPACE  host dir mounted as the engagement workspace (default ./engagement)
   LYNX_HITL       strict | guided | auto   (default strict)
   LYNX_MODEL      default model, e.g. ollama-cloud/qwen3-coder:480b
-                      ${DIM}(per-agent models: 'lynx models')${RESET}
+                      ${DIM}(per-agent models: 'lynx-sec models')${RESET}
   LYNX_IMAGE      image tag   (default lynx:latest)
   LYNX_CONTAINER  container name (default lynx-sandbox)
 
@@ -173,7 +173,7 @@ function ensureContainer(cfg: LynxConfig): void {
   if (state === "stopped") {
     info(`Starting existing sandbox ${cfg.container}…`)
     if (docker.startContainer(cfg.container) !== 0) {
-      fail("Failed to start the existing container. Try 'lynx down' then retry.")
+      fail("Failed to start the existing container. Try 'lynx-sec down' then retry.")
       process.exit(1)
     }
     return
@@ -220,7 +220,7 @@ function openOpencode(
   info(`Opening opencode (HITL=${cfg.hitl}, orchestrator=${orchestrator})…`)
   log(
     DIM +
-      "models per agent are set in <workspace>/opencode.json — edit with 'lynx models'" +
+      "models per agent are set in <workspace>/opencode.json — edit with 'lynx-sec models'" +
       RESET,
   )
   log(DIM + "─".repeat(60) + RESET)
@@ -262,7 +262,7 @@ function cmdShell(cfg: LynxConfig): void {
 }
 
 function cmdStatus(cfg: LynxConfig): void {
-  log(`${BOLD}lynx status${RESET}`)
+  log(`${BOLD}lynx-sec status${RESET}`)
   log(`  docker installed : ${docker.isDockerInstalled() ? GREEN + "yes" : RED + "no"}${RESET}`)
   log(`  docker running   : ${docker.isDockerRunning() ? GREEN + "yes" : RED + "no"}${RESET}`)
   log(
@@ -276,7 +276,7 @@ function cmdStatus(cfg: LynxConfig): void {
   const agents = discoverAgentNames(cfg.repoRoot)
   const sel = loadSelection(process.cwd(), cfg.model ?? FALLBACK_MODEL)
   const models = resolveModels(agents, sel)
-  log(`  models           : ${DIM}(default ${sel.default}; edit with 'lynx models')${RESET}`)
+  log(`  models           : ${DIM}(default ${sel.default}; edit with 'lynx-sec models')${RESET}`)
   for (const a of agents) {
     const overridden = sel.agents[a] ? "" : `${DIM} (default)${RESET}`
     log(`    ${a.padEnd(14)} ${models[a]}${overridden}`)
@@ -286,10 +286,10 @@ function cmdStatus(cfg: LynxConfig): void {
 function cmdModels(cfg: LynxConfig): void {
   const agents = discoverAgentNames(cfg.repoRoot)
   if (agents.length === 0) {
-    fail("No agents found under runtime/agent/. Run from the lynx repo.")
+    fail("No agents found under runtime/agent/. Run from the lynx-sec repo.")
     process.exit(1)
   }
-  // `lynx models list` -> just print accessible model ids.
+  // `lynx-sec models list` -> just print accessible model ids.
   if ((process.argv[3] ?? "").toLowerCase() === "list") {
     const models = listAccessibleModels()
     if (models.length === 0) {

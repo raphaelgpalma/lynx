@@ -49,9 +49,9 @@ You can assign any model accessible through opencode to each agent individually
 `reporter`.
 
 ```bash
-lynx models          # interactive: pick a model for the default + each agent
-lynx models list     # print every model accessible through opencode
-lynx status          # show the current per-agent assignment
+lynx-sec models          # interactive: pick a model for the default + each agent
+lynx-sec models list     # print every model accessible through opencode
+lynx-sec status          # show the current per-agent assignment
 ```
 
 How it works (no image rebuild needed):
@@ -128,4 +128,4 @@ lynx_swarm: false }`) — otherwise it inherits them and could spawn recursive
    orchestration.
 4. Mention it in the orchestrator's delegation list (and its swarm specialist
    list) so it gets used.
-5. Rebuild the image (`lynx build`).
+5. Rebuild the image (`lynx-sec build`).
