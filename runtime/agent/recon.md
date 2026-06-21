@@ -3,6 +3,7 @@ description: Reconnaissance & enumeration specialist — host discovery, port/se
 mode: subagent
 temperature: 0.2
 tools:
+  task: false
   purinina_parallel: false
   purinina_pipeline: false
   purinina_swarm: false
