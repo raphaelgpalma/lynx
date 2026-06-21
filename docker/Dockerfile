@@ -22,8 +22,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LYNX_HITL=strict \
     OPENCODE_CONFIG_DIR=/root/.config/opencode
 
-# --- System + pentest tooling (v1 vertical slice: recon + web/exploitation) ---
-# Kept deliberately focused; more tools are added as new agents land.
+# --- System + pentest tooling (lean base: recon + web/exploitation) ---
+# Kept deliberately lean. Specialist agents install heavier toolchains
+# (creds, AD, post-ex, RE, ...) on demand at runtime via `lynx_install` /
+# `apt-get` (Kali repos), so they are not baked into the image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl wget git unzip jq less vim-tiny \
       python3 python3-pip pipx \

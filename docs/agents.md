@@ -1,6 +1,6 @@
 # Agents
 
-Lynx's v1 ships four agents. Each is an opencode agent defined in
+Lynx ships a roster of specialist agents. Each is an opencode agent defined in
 `runtime/agent/*.md` (frontmatter for config, body for the system prompt).
 "Tool categories" — CAI's idea that a recon agent shouldn't exploit — are
 expressed with **per-agent permissions**.
@@ -12,6 +12,11 @@ expressed with **per-agent permissions**.
 | **orchestrator** | primary  | Plans the engagement, delegates to specialists via `task`, synthesizes results, keeps the operator informed. | `task` (delegate), light `bash`/`edit` (HITL-gated)  |
 | **recon**        | subagent | Host/port/service/DNS/web discovery and enumeration. Maps the attack surface; never exploits.                | recon + readonly bash; **exploitation tools denied** |
 | **web-exploit**  | subagent | Web/API testing and authorized exploitation; builds PoCs.                                                    | full bash + edit, all HITL-gated; no DoS             |
+| **exploit**      | subagent | Service exploitation, privilege escalation, post-exploitation (non-web).                                     | full bash + edit, all HITL-gated; no DoS             |
+| **creds**        | subagent | Online password attacks (brute/spray) and offline hash cracking.                                             | full bash + edit, all HITL-gated; throttled, no DoS  |
+| **ad**           | subagent | Active Directory / Windows: SMB, LDAP, Kerberos, AD attack paths.                                            | full bash + edit, all HITL-gated; no DoS             |
+| **ctf**          | subagent | Broad challenge-solving: pwn, reversing, crypto, forensics, stego.                                           | full bash + edit, all HITL-gated                     |
+| **retester**     | subagent | Verifies findings, kills false positives before they reach the report.                                       | bash + edit, all HITL-gated; minimal reproduction    |
 | **reporter**     | subagent | Turns findings into `reports/REPORT.md`.                                                                     | **no bash**; `edit` only                             |
 
 ## How delegation works
@@ -106,11 +111,21 @@ findings with `lynx_note`. See `runtime/workspace-skeleton/AGENTS.md`.
   actions to confirm authorization.
 - **`lynx_note`** — append a timestamped, phase-tagged entry to
   `notes/engagement-log.md`; the reporter builds the deliverable from this trail.
+- **`lynx_install`** — install pentest tooling on demand inside the sandbox via
+  `apt` (vetted allowlist). The image stays lean (recon + web); specialists pull
+  in `hydra`, `netexec`, `metasploit-framework`, `binwalk`, etc. as needed.
+  Anything outside the allowlist is installed with `apt-get` via `bash`, where
+  the HITL **provision** tier gates it.
 
 ## Adding an agent
 
 1. Create `runtime/agent/<name>.md` with frontmatter (`description`, `mode`,
    `permission`, optional `model`/`temperature`) and a system-prompt body.
 2. Constrain its tool category via `permission.bash` patterns.
-3. Mention it in the orchestrator's delegation list so it gets used.
-4. Rebuild the image (`lynx build`).
+3. **Disable the orchestrator-only engine tools** in a subagent's frontmatter
+   (`tools: { task: false, lynx_parallel: false, lynx_pipeline: false,
+lynx_swarm: false }`) — otherwise it inherits them and could spawn recursive
+   orchestration.
+4. Mention it in the orchestrator's delegation list (and its swarm specialist
+   list) so it gets used.
+5. Rebuild the image (`lynx build`).

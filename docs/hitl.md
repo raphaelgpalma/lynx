@@ -48,6 +48,7 @@ per-category tools):
 | `escape`      | break out of sandbox / reach host           | `nsenter`, `docker run`, `/proc/1/root`, docker.sock          |
 | `exploit`     | active exploitation / cred attacks / shells | `sqlmap --dump`, `hydra`, `nc -e`, `/dev/tcp/…` reverse shell |
 | `recon`       | active scanning / enumeration               | `nmap`, `gobuster`, `ffuf`, `nikto`, `whatweb`                |
+| `provision`   | install tooling on demand (package manager) | `apt-get install hydra`, `pipx install …`, `gem install …`    |
 | `script`      | arbitrary interpreter, intent unknown       | `python3 -c …`, `bash -c …`                                   |
 | `readonly`    | local non-intrusive inspection              | `ls`, `cat`, `dig`, `grep`, `whoami`                          |
 | `unknown`     | unrecognized command                        | anything else                                                 |
@@ -63,6 +64,7 @@ binary of each segment, so `nmap … | grep open` is still `recon` and
 | destructive / escape | **deny**           | **deny** | **deny**           |
 | exploit              | ask                | ask      | allow              |
 | recon                | ask                | allow    | allow              |
+| provision (install)  | ask                | allow    | allow              |
 | script / unknown     | ask                | ask      | allow              |
 | readonly             | allow              | allow    | allow              |
 | edit (in workspace)  | ask                | allow    | allow              |

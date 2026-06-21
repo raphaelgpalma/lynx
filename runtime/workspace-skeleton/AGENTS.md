@@ -24,6 +24,14 @@ inside a hardened sandbox. These rules apply to all agents at all times.
   `recon/`, `web/`, `exploitation/`, `loot/`, `evidence/`, `reports/`, `notes/`.
 - File access outside the workspace is denied. Work only inside it.
 
+## Install tools on demand
+
+- The sandbox ships a lean recon/web toolset. If a tool you need is missing,
+  install it with `lynx_install` (vetted security packages), or with
+  `apt-get update && apt-get install -y <pkg>` via `bash` for anything else
+  (operator-gated). Use `pipx`/`pip`/`gem` for non-apt tools.
+- Don't assume a tool is absent — try it first; install only if it's missing.
+
 ## Record as you go
 
 - Use `lynx_note` to log findings, decisions, and next steps to

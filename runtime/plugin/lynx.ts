@@ -27,8 +27,10 @@
  */
 
 import { tool, type Plugin } from "@opencode-ai/plugin"
+import { execFile } from "node:child_process"
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
+import { promisify } from "node:util"
 
 // ---------------------------------------------------------------------------
 // HITL modes
@@ -59,6 +61,7 @@ type RiskTier =
   | "escape" // attempts to break out of the sandbox / reach the host — always denied
   | "exploit" // active exploitation / credential attacks / shells — high impact
   | "recon" // active scanning / enumeration against targets — intrusive
+  | "provision" // local package install (apt/pip/...) — set up tooling on demand
   | "script" // arbitrary interpreters (python/sh -c ...) — intent unknown
   | "readonly" // local, non-intrusive inspection — safe
   | "unknown" // unrecognized — treated cautiously
@@ -203,6 +206,20 @@ const SCRIPT_BINARIES = [
   "lua",
 ]
 
+/** Package managers — installing tooling on demand inside the sandbox. */
+const PROVISION_BINARIES = [
+  "apt",
+  "apt-get",
+  "aptitude",
+  "dpkg",
+  "pip",
+  "pip3",
+  "pipx",
+  "gem",
+  "go",
+  "cargo",
+]
+
 /** Split a command line into segments across shell operators, returning the leading binary of each. */
 function leadingBinaries(command: string): string[] {
   const segments = command.split(/\||;|&&|\|\||\n|`|\$\(/)
@@ -238,6 +255,7 @@ function classifyCommand(command: string): RiskTier {
 
   if (has(EXPLOIT_BINARIES)) return "exploit"
   if (has(RECON_BINARIES)) return "recon"
+  if (has(PROVISION_BINARIES)) return "provision"
 
   // If every segment is a known readonly binary, it's safe. A single unknown
   // segment downgrades the whole pipeline to a more cautious tier.
@@ -268,6 +286,10 @@ function decideForBash(tier: RiskTier, mode: HitlMode): { decision: Decision; re
       return mode === "strict"
         ? { decision: "ask", reason: "active reconnaissance against a target" }
         : { decision: "allow", reason: "recon allowed in guided mode" }
+    case "provision":
+      return mode === "strict"
+        ? { decision: "ask", reason: "installing tooling (package manager)" }
+        : { decision: "allow", reason: "tool install allowed in guided mode" }
     case "exploit":
       return { decision: "ask", reason: "active exploitation / high impact" }
     case "script":
@@ -303,6 +325,127 @@ function commandFromPermission(p: {
 function log(msg: string): void {
   // opencode captures plugin stderr into its logs.
   console.error(`[lynx] ${msg}`)
+}
+
+// ---------------------------------------------------------------------------
+// On-demand tooling install
+// ---------------------------------------------------------------------------
+//
+// The sandbox image ships a lean recon+web toolset; specialist agents install
+// what they need on demand via apt. `lynx_install` accepts only vetted security
+// packages (a guard against typo-squat / arbitrary installs). Anything outside
+// the allowlist goes through bash, where the HITL "provision" tier applies.
+
+const execFileAsync = promisify(execFile)
+const APT_ENV = { ...process.env, DEBIAN_FRONTEND: "noninteractive" }
+
+/** Vetted apt packages installable via `lynx_install` (Kali repos). */
+const INSTALL_ALLOWLIST: Set<string> = new Set([
+  // recon / enumeration
+  "nmap",
+  "masscan",
+  "rustscan",
+  "amass",
+  "dnsenum",
+  "dnsrecon",
+  "fierce",
+  "sublist3r",
+  "theharvester",
+  "onesixtyone",
+  "snmp",
+  "nbtscan",
+  "dnsutils",
+  "whatweb",
+  "wafw00f",
+  // web
+  "nikto",
+  "gobuster",
+  "ffuf",
+  "feroxbuster",
+  "dirb",
+  "dirbuster",
+  "wfuzz",
+  "sqlmap",
+  "wpscan",
+  "nuclei",
+  "commix",
+  "xsser",
+  "joomscan",
+  "sslscan",
+  // credential attacks
+  "hydra",
+  "thc-hydra",
+  "medusa",
+  "ncrack",
+  "patator",
+  "john",
+  "hashcat",
+  "crackmapexec",
+  "netexec",
+  // active directory / windows / smb
+  "smbclient",
+  "smbmap",
+  "enum4linux",
+  "ldap-utils",
+  "evil-winrm",
+  "kerbrute",
+  "impacket-scripts",
+  "polenum",
+  "responder",
+  "bloodhound",
+  "rpcbind",
+  // exploitation / post-exploitation
+  "metasploit-framework",
+  "exploitdb",
+  "powershell",
+  "chisel",
+  "socat",
+  "proxychains4",
+  "sshuttle",
+  "ligolo-ng",
+  // ctf / reversing / stego
+  "binwalk",
+  "foremost",
+  "steghide",
+  "stegseek",
+  "zsteg",
+  "fcrackzip",
+  "pdfcrack",
+  "qpdf",
+  "exiftool",
+  "libimage-exiftool-perl",
+  "gdb",
+  "radare2",
+  "ltrace",
+  "strace",
+  "hexedit",
+  "bsdmainutils",
+  // wordlists / general
+  "seclists",
+  "wordlists",
+  "git",
+  "curl",
+  "wget",
+  "jq",
+  "python3-pip",
+  "pipx",
+  "unzip",
+])
+
+/** Append an audit line to the engagement log for an on-demand install. */
+async function appendInstallNote(directory: string, pkgs: string[]): Promise<void> {
+  try {
+    const dir = join(directory, "notes")
+    await mkdir(dir, { recursive: true })
+    const stamp = new Date().toISOString()
+    await appendFile(
+      join(dir, "engagement-log.md"),
+      `\n## ${stamp} · [general]\n\nInstalled tooling on demand: ${pkgs.join(", ")}\n`,
+      "utf8",
+    )
+  } catch {
+    // best-effort audit; never fail the install over a note
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -601,6 +744,65 @@ export const LynxPlugin: Plugin = async ({ client, directory }) => {
               : "scope/SCOPE.md is empty. Ask the operator to define the authorized scope before proceeding."
           } catch {
             return "No scope/SCOPE.md found. Ask the operator to define the authorized scope before proceeding."
+          }
+        },
+      }),
+
+      lynx_install: tool({
+        description:
+          "Install pentest tooling on demand inside the sandbox via apt (e.g. hydra, netexec, smbclient, binwalk, metasploit-framework). Use when a tool you need is not already present. Only vetted security packages are accepted; for anything else, install with `apt-get` via bash (operator-gated).",
+        args: {
+          packages: tool.schema
+            .array(tool.schema.string())
+            .describe("apt package names to install, e.g. ['hydra','netexec']."),
+        },
+        async execute(args, ctx) {
+          if (!inSandbox()) {
+            return "Refusing to install: not running inside the Lynx sandbox."
+          }
+          const requested = (args.packages ?? []).map((p) => p.trim().toLowerCase()).filter(Boolean)
+          if (requested.length === 0) return "No packages specified."
+          const allowed = requested.filter(
+            (p) => /^[a-z0-9][a-z0-9+._-]*$/.test(p) && INSTALL_ALLOWLIST.has(p),
+          )
+          const rejected = requested.filter((p) => !allowed.includes(p))
+          if (allowed.length === 0) {
+            return (
+              `None of the requested packages are in the install allowlist: ${requested.join(", ")}. ` +
+              "Install them with `apt-get install -y <pkg>` via bash so the operator can approve, " +
+              "or ask the operator to extend the allowlist."
+            )
+          }
+          log(
+            `install -> ${allowed.join(" ")}` +
+              (rejected.length ? ` (skipped: ${rejected.join(", ")})` : ""),
+          )
+          try {
+            await execFileAsync("apt-get", ["update"], {
+              timeout: 180_000,
+              env: APT_ENV,
+              maxBuffer: 1 << 24,
+            })
+            const { stdout, stderr } = await execFileAsync(
+              "apt-get",
+              ["install", "-y", "--no-install-recommends", ...allowed],
+              { timeout: 600_000, env: APT_ENV, maxBuffer: 1 << 24 },
+            )
+            await appendInstallNote(ctx.directory, allowed)
+            const tail = (stdout || stderr || "").split("\n").filter(Boolean).slice(-6).join("\n")
+            return [
+              `Installed: ${allowed.join(", ")}.`,
+              rejected.length ? `Not in allowlist (skipped): ${rejected.join(", ")}.` : "",
+              tail ? `\n${tail}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n")
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e)
+            return (
+              `Install failed for [${allowed.join(", ")}]: ${msg}\n` +
+              "Some tools are not apt packages (e.g. installed via pipx/gem) — try those with bash."
+            )
           }
         },
       }),
