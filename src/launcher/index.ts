@@ -8,8 +8,8 @@
  *
  *   lynx-sec               build (if needed) + start sandbox + open opencode (active target)
  *   lynx-sec target [name] show / create+select the active target (engagement)
- *   lynx-sec target rm <n> delete a target and all its files (needs --force)
  *   lynx-sec targets       list saved targets
+ *   lynx-sec rm <name>     delete a target and all its files (dry-run; --force to confirm)
  *   lynx-sec build         (re)build the sandbox image
  *   lynx-sec shell         open a bash shell inside the sandbox
  *   lynx-sec status        show docker / image / container / target state
@@ -80,15 +80,15 @@ ${BOLD}Usage${RESET}
 ${BOLD}Commands${RESET}
   ${CYAN}(default)${RESET}      build if needed, start the sandbox, open opencode on the active target
   ${CYAN}target${RESET} [name]  show, or create+select, the active target (engagement)
-  ${CYAN}target rm${RESET} <n>   delete a target and all its files (needs --force)
   ${CYAN}targets${RESET}        list saved targets
+  ${CYAN}rm${RESET} <name>      delete a target and all its files (dry-run; --force to confirm)
   ${CYAN}build${RESET}          (re)build the sandbox image
   ${CYAN}models${RESET}         assign a model to each agent (interactive); 'models list' prints all
   ${CYAN}shell${RESET}          open a bash shell inside the running sandbox
   ${CYAN}status${RESET}         show docker / image / container / target state
   ${CYAN}reset${RESET} [name]   wipe a target's opencode session/context (keeps engagement files)
   ${CYAN}stop${RESET}           stop the sandbox container
-  ${CYAN}down${RESET}           stop and remove the sandbox container
+  ${CYAN}down${RESET}           stop and remove the sandbox container (not the target's files)
   ${CYAN}help${RESET}           show this help
 
 ${BOLD}Targets${RESET} ${DIM}(each is a persistent, separate engagement)${RESET}
@@ -371,7 +371,7 @@ function cmdTarget(cfg: LynxConfig): void {
 /** Permanently delete a target and all its files (dry-run unless --force). */
 function cmdTargetRm(cfg: LynxConfig, name?: string, flag?: string): void {
   if (!name) {
-    fail("Usage: lynx-sec target rm <name> [--force]")
+    fail("Usage: lynx-sec rm <target> [--force]   (to remove the container, use 'lynx-sec down')")
     process.exit(1)
   }
   if (!targets.targetExists(name)) {
@@ -383,7 +383,7 @@ function cmdTargetRm(cfg: LynxConfig, name?: string, flag?: string): void {
   if (!force) {
     warn(`This permanently deletes target '${name}' and ALL its files (loot, reports, session):`)
     log(`  ${dir}`)
-    log(`${DIM}Re-run to confirm:  lynx-sec target rm ${name} --force${RESET}`)
+    log(`${DIM}Re-run to confirm:  lynx-sec rm ${name} --force${RESET}`)
     return
   }
   // If the sandbox is bound to this target, remove it first so nothing dangles.
@@ -505,8 +505,12 @@ function main(): void {
       cmdStop(cfg)
       break
     case "down":
-    case "rm":
       cmdDown(cfg)
+      break
+    case "rm":
+    case "delete":
+      // Top-level convenience for `target rm`: delete a target by name.
+      cmdTargetRm(cfg, process.argv[3], process.argv[4])
       break
     case "help":
     case "-h":
