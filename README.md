@@ -112,6 +112,7 @@ lynx-sec target hospital  # switch: clean session for "hospital"
 lynx-sec target acme      # come back to acme — files + context restored
 lynx-sec targets          # list all targets
 lynx-sec reset            # wipe the active target's session (keeps its files)
+lynx-sec target rm acme --force   # delete a target and all its files
 ```
 
 Provider auth (`auth.json`) is mounted read-only on top of `.opencode`, so the

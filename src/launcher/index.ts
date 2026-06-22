@@ -8,6 +8,7 @@
  *
  *   lynx-sec               build (if needed) + start sandbox + open opencode (active target)
  *   lynx-sec target [name] show / create+select the active target (engagement)
+ *   lynx-sec target rm <n> delete a target and all its files (needs --force)
  *   lynx-sec targets       list saved targets
  *   lynx-sec build         (re)build the sandbox image
  *   lynx-sec shell         open a bash shell inside the sandbox
@@ -79,6 +80,7 @@ ${BOLD}Usage${RESET}
 ${BOLD}Commands${RESET}
   ${CYAN}(default)${RESET}      build if needed, start the sandbox, open opencode on the active target
   ${CYAN}target${RESET} [name]  show, or create+select, the active target (engagement)
+  ${CYAN}target rm${RESET} <n>   delete a target and all its files (needs --force)
   ${CYAN}targets${RESET}        list saved targets
   ${CYAN}build${RESET}          (re)build the sandbox image
   ${CYAN}models${RESET}         assign a model to each agent (interactive); 'models list' prints all
@@ -339,10 +341,14 @@ function cmdModels(cfg: LynxConfig): void {
   )
 }
 
-/** Show, or create+select, the active target (engagement). */
-function cmdTarget(): void {
-  const name = process.argv[3]
-  if (!name) {
+/** Show, create+select, or delete the active target (engagement). */
+function cmdTarget(cfg: LynxConfig): void {
+  const arg = process.argv[3]
+  if (arg === "rm" || arg === "delete" || arg === "remove") {
+    cmdTargetRm(cfg, process.argv[4], process.argv[5])
+    return
+  }
+  if (!arg) {
     const active = targets.getActiveTarget() ?? targets.DEFAULT_TARGET
     log(`${BOLD}active target${RESET}: ${active}`)
     log(`  dir       : ${targets.targetDir(active)}`)
@@ -350,16 +356,52 @@ function cmdTarget(): void {
     log(`${DIM}select/create: lynx-sec target <name>  ·  list: lynx-sec targets${RESET}`)
     return
   }
-  if (!targets.isValidTargetName(name)) {
-    fail(`Invalid target name '${name}'. Use letters, digits, . _ - (max 64 chars).`)
+  if (!targets.isValidTargetName(arg)) {
+    fail(`Invalid target name '${arg}'. Use letters, digits, . _ - (max 64 chars).`)
     process.exit(1)
   }
-  const fresh = !targets.targetExists(name)
-  targets.ensureTarget(name)
-  targets.setActiveTarget(name)
-  ok(`${fresh ? "Created and selected" : "Selected"} target '${name}'.`)
-  log(`  ${targets.targetDir(name)}`)
+  const fresh = !targets.targetExists(arg)
+  targets.ensureTarget(arg)
+  targets.setActiveTarget(arg)
+  ok(`${fresh ? "Created and selected" : "Selected"} target '${arg}'.`)
+  log(`  ${targets.targetDir(arg)}`)
   log(`${DIM}run 'lynx-sec' to launch it.${RESET}`)
+}
+
+/** Permanently delete a target and all its files (dry-run unless --force). */
+function cmdTargetRm(cfg: LynxConfig, name?: string, flag?: string): void {
+  if (!name) {
+    fail("Usage: lynx-sec target rm <name> [--force]")
+    process.exit(1)
+  }
+  if (!targets.targetExists(name)) {
+    warn(`Target '${name}' does not exist.`)
+    return
+  }
+  const dir = targets.targetDir(name)
+  const force = flag === "--force" || flag === "-f" || flag === "-y"
+  if (!force) {
+    warn(`This permanently deletes target '${name}' and ALL its files (loot, reports, session):`)
+    log(`  ${dir}`)
+    log(`${DIM}Re-run to confirm:  lynx-sec target rm ${name} --force${RESET}`)
+    return
+  }
+  // If the sandbox is bound to this target, remove it first so nothing dangles.
+  if (
+    docker.isDockerInstalled() &&
+    docker.containerState(cfg.container) !== "absent" &&
+    resolve(docker.containerWorkspace(cfg.container) || "/") ===
+      resolve(targets.targetWorkspace(name))
+  ) {
+    docker.removeContainer(cfg.container)
+    info("Removed the sandbox bound to this target.")
+  }
+  const wasActive = targets.getActiveTarget() === name
+  targets.deleteTarget(name)
+  ok(`Deleted target '${name}'.`)
+  if (wasActive) {
+    log(`${DIM}No active target now — next 'lynx-sec' uses '${targets.DEFAULT_TARGET}'.${RESET}`)
+  }
 }
 
 /** List saved targets, marking the active one. */
@@ -435,7 +477,7 @@ function main(): void {
       break
     case "target":
     case "use":
-      cmdTarget()
+      cmdTarget(cfg)
       break
     case "targets":
     case "ls":

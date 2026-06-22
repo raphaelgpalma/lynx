@@ -15,7 +15,15 @@
  * Secrets never land here: auth.json is mounted read-only on top of .opencode at
  * runtime, so the host target folder holds the session DB but not the API key.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
 import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 
@@ -75,6 +83,21 @@ export function getActiveTarget(): string | undefined {
 export function setActiveTarget(name: string): void {
   mkdirSync(lynxHome(), { recursive: true })
   writeFileSync(activeFile(), `${name}\n`, "utf8")
+}
+
+/** Forget the active-target pointer (next launch falls back to DEFAULT_TARGET). */
+export function clearActiveTarget(): void {
+  try {
+    rmSync(activeFile(), { force: true })
+  } catch {
+    // nothing to clear
+  }
+}
+
+/** Permanently delete a target and ALL its files. Caller must confirm intent. */
+export function deleteTarget(name: string): void {
+  rmSync(targetDir(name), { recursive: true, force: true })
+  if (getActiveTarget() === name) clearActiveTarget()
 }
 
 /** Last-modified time of the target's engagement dir (for `targets` listing). */
